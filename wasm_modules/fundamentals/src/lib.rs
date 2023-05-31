@@ -1,5 +1,7 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
+use web_sys::{GpuDevice, GpuCanvasContext, GpuTextureFormat};
+
 
 #[wasm_bindgen]
 extern "C"
@@ -10,20 +12,31 @@ extern "C"
 
 
 #[wasm_bindgen]
-pub struct Scene {}
+pub struct Scene 
+{
+    gpu_device: GpuDevice,
+    context: GpuCanvasContext,
+    gpu_texture_format: GpuTextureFormat,
+}
 
 
 #[wasm_bindgen]
 impl Scene
 {
-    pub fn create() -> Self
+    pub fn create(
+        gpu_device: GpuDevice, context: GpuCanvasContext, gpu_texture_format: GpuTextureFormat,
+    ) 
+        -> Self
     {
-        Scene {}
+        Scene 
+        {
+            gpu_device, context, gpu_texture_format,
+        }
     }
 
 
-    pub fn greeting(&self, input: &str)
+    pub fn render(&self)
     {
-        log(&format!("Hello, {input}!"));
+        log("Hello, wasm");
     }
 }

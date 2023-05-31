@@ -15,9 +15,17 @@ async function main() {
         return;
     }
 
+    const context = canvas.getContext("webgpu");
 
-    const scene = await initFundamentals();
-    scene.greeting("wasm");
+    const gpuTextureFormat = navigator.gpu.getPreferredCanvasFormat();
+    context.configure({
+        device,
+        format: gpuTextureFormat,
+    });
+
+    const scene = await initFundamentals(device, context, gpuTextureFormat);
+    
+    scene.render();
 }
 
 await main();
