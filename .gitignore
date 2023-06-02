@@ -5,3 +5,6 @@ wasm
 
 wasm_modules/fundamentals/Cargo.lock
 wasm_modules/fundamentals/target
+
+wasm_modules/inter_stage_variables/Cargo.lock
+wasm_modules/inter_stage_variables/target
