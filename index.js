@@ -24,8 +24,14 @@ async function main() {
     });
 
     const scene = await initFundamentals(device, context, gpuTextureFormat);
-    
+
     scene.render();
+
+    const input = new Float32Array([1, 3, 5, 7]);
+    const output = await scene.compute(input);
+    
+    console.log("Input:", input);
+    console.log("Output:", output);
 }
 
 await main();

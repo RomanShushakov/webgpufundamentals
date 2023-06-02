@@ -1,6 +1,6 @@
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
-use wasm_bindgen_futures::{JsFuture, spawn_local};
+use wasm_bindgen_futures::JsFuture;
 
 use web_sys::
 {
@@ -84,6 +84,17 @@ impl Scene
         render_pass_encoder.end();
 
 
+        let command_buffer = command_encoder.finish();
+        self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
+    }
+
+
+    pub async fn compute(&self, input: &[f32]) -> Result<Float32Array, JsValue>
+    {
+        let command_encoder = self.gpu_device.create_command_encoder();
+        command_encoder.set_label("Our command encoder");
+
+
         let mut compute_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/compute.wgsl"));
         compute_shader_module_descriptor.label("Doubling compute module");
         let compute_shader_module = self.gpu_device.create_shader_module(&compute_shader_module_descriptor);
@@ -95,7 +106,7 @@ impl Scene
         compute_pipeline_descriptor.label("Doubling compute pipeline");
         let compute_pipeline = self.gpu_device.create_compute_pipeline(&compute_pipeline_descriptor);
 
-        let input_array = Float32Array::from([1.0f32, 3.0, 5.0].as_slice());
+        let input_array = Float32Array::from(input);
 
         let mut compute_input_buffer_descriptor = GpuBufferDescriptor::new(
             input_array.byte_length().into(),
@@ -136,15 +147,11 @@ impl Scene
         self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
 
 
-        log(&format!("{:?}", input_array.to_vec()));
+        JsFuture::from(compute_result_buffer.map_async(READ)).await?;
+        let result_buffer = compute_result_buffer.get_mapped_range();
+        let output = Float32Array::new(&result_buffer.slice(0));
+        compute_result_buffer.unmap();
 
-        spawn_local(async move
-            {
-                JsFuture::from(compute_result_buffer.map_async(READ)).await.unwrap();
-                let result_buffer = compute_result_buffer.get_mapped_range();
-                log(&format!("{:?}", Float32Array::new(&result_buffer).to_vec()));
-                compute_result_buffer.unmap();
-            }
-        );
+        Ok(output)
     }
 }
