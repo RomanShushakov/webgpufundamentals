@@ -54,19 +54,23 @@ impl Scene
         command_encoder.set_label("Our command encoder");
 
 
-        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
-        render_shader_module_descriptor.label("Our hardcoded rgb triangle shaders");
-        let render_shader_module = self.gpu_device.create_shader_module(&render_shader_module_descriptor);
+        let mut vert_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/vert.wgsl"));
+        vert_shader_module_descriptor.label("hardcoded triangle");
+        let vert_shader_module = self.gpu_device.create_shader_module(&vert_shader_module_descriptor);
 
-        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let mut frag_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/frag.wgsl"));
+        frag_shader_module_descriptor.label("checkerboard");
+        let frag_shader_module = self.gpu_device.create_shader_module(&frag_shader_module_descriptor);
+
+        let vertex_state = GpuVertexState::new("vertex_main", &vert_shader_module);
 
         let color_target_state = GpuColorTargetState::new(self.gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
-        let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
+        let fragment_state = GpuFragmentState::new("fragment_main", &frag_shader_module, &fragment_state_targets);
 
         let render_layout = JsValue::from("auto");
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
-        render_pipeline_descriptor.label("Our hardcoded red triangle pipeline");
+        render_pipeline_descriptor.label("hardcoded checkerboard triangle pipeline");
         render_pipeline_descriptor.fragment(&fragment_state);
         let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
@@ -76,7 +80,7 @@ impl Scene
         color_attachment.clear_value(&GpuColorDict::new(1.0, 1.0, 0.0, 0.0));
         let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
         let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
-        render_pass_descriptor.label("Our basic canvas render pass");
+        render_pass_descriptor.label("basic canvas render pass");
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
         render_pass_encoder.set_pipeline(&render_pipeline);
