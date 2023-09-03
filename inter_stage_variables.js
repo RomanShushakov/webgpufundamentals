@@ -2,12 +2,27 @@ import { initInterStageVariables } from "./wasm_modules_initialization/inter_sta
 
 
 export async function mainInterStageVariables() {
-    const adapter = await navigator.gpu?.requestAdapter();
-    const device = await adapter?.requestDevice();
-    if (!device) {
-        console.log("need a browser that supports WebGPU");
+    if (!navigator.gpu) {
+        fail('this browser does not support WebGPU');
         return;
     }
+
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) {
+        fail('this browser supports webgpu but it appears disabled');
+        return;
+    }
+
+    const device = await adapter?.requestDevice();
+    device.lost.then((info) => {
+        console.error(`WebGPU device was lost: ${info.message}`);
+
+        // 'reason' will be 'destroyed' if we intentionally destroy the device.
+        if (info.reason !== 'destroyed') {
+            // try again
+            mainInterStageVariables();
+        }
+    });
 
     const canvas = document.getElementById("canvas");
     if (!canvas) {
@@ -24,7 +39,6 @@ export async function mainInterStageVariables() {
     });
 
     const scene = await initInterStageVariables(device, context, gpuTextureFormat);
-
 
     const observer = new ResizeObserver(entries => {
         for (const entry of entries) {
