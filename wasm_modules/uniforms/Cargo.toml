@@ -1,0 +1,60 @@
+[package]
+name = "uniforms"
+version = "0.1.0"
+authors = ["roman shushakov <roman.a.shushakov1@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[profile.release]
+lto = true
+opt-level = 3
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.87"
+
+wasm-bindgen-futures = "0.4.37"
+
+web-sys = { version = "0.3.64", features = [
+    "GpuDevice",
+    "GpuCanvasContext",
+    "GpuTextureFormat",
+    "GpuShaderModuleDescriptor",
+    "GpuShaderModule",
+    "GpuVertexState",
+    "GpuColorTargetState",
+    "GpuFragmentState",
+    "GpuRenderPipelineDescriptor",
+    "GpuRenderPipeline",
+    "GpuRenderPassColorAttachment",
+    "GpuLoadOp",
+    "GpuStoreOp",
+    "GpuColorDict",
+    "GpuRenderPassDescriptor",
+    "GpuTexture",
+    "GpuTextureView",
+    "GpuCommandEncoder",
+    "GpuRenderPassDescriptor",
+    "GpuRenderPassEncoder",
+    "GpuCommandBuffer",
+    "GpuQueue",
+    "GpuComputePipelineDescriptor",
+    "GpuComputePipeline",
+    "GpuProgrammableStage",
+    "GpuBufferDescriptor",
+    "GpuBuffer",
+    "GpuBindGroupDescriptor",
+    "GpuBindGroup",
+    "GpuBindGroupLayout",
+    "GpuBindGroupEntry",
+    "GpuBufferBinding",
+    "GpuComputePassDescriptor",
+    "GpuComputePassEncoder",
+    "gpu_buffer_usage",
+    "gpu_map_mode",
+] }
+
+js-sys = "0.3.64"
