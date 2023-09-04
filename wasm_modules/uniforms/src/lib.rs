@@ -49,7 +49,7 @@ impl Scene
     pub fn render(&self)
     {
         let command_encoder = self.gpu_device.create_command_encoder();
-        command_encoder.set_label("Our command encoder");
+        command_encoder.set_label("command encoder");
 
         let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
         render_shader_module_descriptor.label("triangle shaders with uniforms");
@@ -63,7 +63,7 @@ impl Scene
 
         let render_layout = JsValue::from("auto");
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &render_state);
-        render_pipeline_descriptor.label("hardcoded checkerboard triangle pipeline");
+        render_pipeline_descriptor.label("triangle with uniforms");
         render_pipeline_descriptor.fragment(&fragment_state);
         let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
@@ -75,7 +75,7 @@ impl Scene
             uniform_buffer_size.into(),
             UNIFORM | COPY_DST,
         );
-        uniform_buffer_descriptor.label("uniforms");
+        uniform_buffer_descriptor.label("uniforms for triangle");
         let uniform_buffer = self.gpu_device.create_buffer(&uniform_buffer_descriptor);
 
         let uniform_values = Float32Array::new_with_length(uniform_buffer_size / 4);
@@ -115,7 +115,7 @@ impl Scene
         let mut color_attachment = GpuRenderPassColorAttachment::new(
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
         );
-        color_attachment.clear_value(&GpuColorDict::new(0.3, 0.3, 0.3, 1.0));
+        color_attachment.clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
         let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
         let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
         render_pass_descriptor.label("basic canvas render pass");
