@@ -1,20 +1,11 @@
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
-use wasm_bindgen_futures::JsFuture;
-
 use web_sys::
 {
     GpuDevice, GpuCanvasContext, GpuTextureFormat, GpuShaderModuleDescriptor, GpuVertexState, GpuColorTargetState, 
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
-    GpuRenderPassDescriptor, GpuComputePipelineDescriptor, GpuProgrammableStage, GpuBufferDescriptor, 
-    GpuBindGroupDescriptor, GpuBindGroupEntry, GpuBufferBinding, GpuComputePassDescriptor,
+    GpuRenderPassDescriptor,
 };
-use web_sys::gpu_buffer_usage::{COPY_SRC, COPY_DST, STORAGE, MAP_READ};
-
-use web_sys::gpu_map_mode::READ;
-
-use js_sys::Float32Array;
-
 
 #[wasm_bindgen]
 extern "C"
