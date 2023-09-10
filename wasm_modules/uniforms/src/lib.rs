@@ -55,14 +55,14 @@ impl Scene
         render_shader_module_descriptor.label("triangle shaders with uniforms");
         let render_shader_module = self.gpu_device.create_shader_module(&render_shader_module_descriptor);
 
-        let render_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
 
         let color_target_state = GpuColorTargetState::new(self.gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
 
         let render_layout = JsValue::from("auto");
-        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &render_state);
+        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
         render_pipeline_descriptor.label("triangle with uniforms");
         render_pipeline_descriptor.fragment(&fragment_state);
         let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
@@ -93,15 +93,15 @@ impl Scene
         offset_array.copy_from(&offset);
         uniform_values.set(&offset_array, k_offset_offset);     // set the offset
 
-        let bind_group_entry_0_resource = GpuBufferBinding::new(&uniform_buffer);
-        let bind_group_entry_0 = GpuBindGroupEntry::new(0, &bind_group_entry_0_resource);
+        let bind_group_0_entry_resource = GpuBufferBinding::new(&uniform_buffer);
+        let bind_group_0_entry = GpuBindGroupEntry::new(0, &bind_group_0_entry_resource);
     
-        let bind_group_entries = [bind_group_entry_0].iter().collect::<js_sys::Array>();
-        let mut bind_group_descriptor = GpuBindGroupDescriptor::new(
-            &bind_group_entries, &render_pipeline.get_bind_group_layout(0),
+        let bind_group_0_entries = [bind_group_0_entry].iter().collect::<js_sys::Array>();
+        let mut bind_group_0_descriptor = GpuBindGroupDescriptor::new(
+            &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
         );
-        bind_group_descriptor.label("bind group 0");
-        let bind_group = self.gpu_device.create_bind_group(&bind_group_descriptor);
+        bind_group_0_descriptor.label("bind group 0");
+        let bind_group_0 = self.gpu_device.create_bind_group(&bind_group_0_descriptor);
 
         let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
         let aspect = canvas.width() / canvas.height();
@@ -122,7 +122,7 @@ impl Scene
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
         render_pass_encoder.set_pipeline(&render_pipeline);
-        render_pass_encoder.set_bind_group(0, &bind_group);
+        render_pass_encoder.set_bind_group(0, &bind_group_0);
         render_pass_encoder.draw(3);
         render_pass_encoder.end();
 
