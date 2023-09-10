@@ -66,50 +66,72 @@ impl Scene
         render_pipeline_descriptor.fragment(&fragment_state);
         let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
-        let uniform_buffer_size =
-            4 * 4 +     // color is 4 32bit floats (4bytes each)
-            2 * 4 +     // scale is 2 32bit floats (4bytes each)
-            2 * 4;      // offset is 2 32bit floats (4bytes each)
-
         let rand = |min: Option<f32>, max: Option<f32>| 
-        {
-            let mut rng = thread_rng();
-            if min.is_none() { return rng.gen_range(0.0..1.0); };
-            if max.is_none() { return rng.gen_range(0.0..min.unwrap()); };
-            rng.gen_range(min.unwrap()..max.unwrap())
-        };
+            {
+                let mut rng = thread_rng();
+                if min.is_none() { return rng.gen_range(0.0..1.0); };
+                if max.is_none() { return rng.gen_range(0.0..min.unwrap()); };
+                rng.gen_range(min.unwrap()..max.unwrap())
+            };
 
-        let k_color_offset: u32 = 0;
-        let k_scale_offset: u32 = 4;
-        let k_offset_offset: u32 = 6;
+        let static_uniform_buffer_size =
+            4 * 4 + // color is 4 32bit floats (4bytes each)
+            2 * 4 + // offset is 2 32bit floats (4bytes each)
+            2 * 4;  // padding
+
+        let uniform_buffer_size =
+            2 * 4;  // scale is 2 32bit floats (4bytes each)
+
+        let k_color_offset = 0u32;
+        let k_offset_offset = 4u32;
+        let k_scale_offset = 0u32;
 
         let k_num_objects = 100;
         let mut object_infos = Vec::new();
 
         for i in 0..k_num_objects
         {
+            let mut static_uniform_buffer_descriptor = GpuBufferDescriptor::new(
+                static_uniform_buffer_size.into(),
+                UNIFORM | COPY_DST,
+            );
+            static_uniform_buffer_descriptor.label(&format!("static uniforms for obj: {}", i));
+            let static_uniform_buffer = self.gpu_device.create_buffer(&static_uniform_buffer_descriptor);   
+
+            let static_uniform_values = Float32Array::new_with_length(static_uniform_buffer_size / 4);
+
+            let color = [rand(None, None), rand(None, None), rand(None, None), 1.0];
+            let color_array = Float32Array::new_with_length(color.len() as u32);
+            color_array.copy_from(&color);
+            static_uniform_values.set(&color_array, k_color_offset);       // set the color
+
+            let offset = [rand(Some(-0.9), Some(0.9)), rand(Some(-0.9), Some(0.9))];
+            let offset_array = Float32Array::new_with_length(offset.len() as u32);
+            offset_array.copy_from(&offset);
+            static_uniform_values.set(&offset_array, k_offset_offset);     // set the offset
+
+            // copy these values to the GPU
+            self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+                &static_uniform_buffer, 0, &static_uniform_values,
+            );
+
+            // create a typedarray to hold the values for the uniforms in JavaScript
             let mut uniform_buffer_descriptor = GpuBufferDescriptor::new(
                 uniform_buffer_size.into(),
                 UNIFORM | COPY_DST,
             );
             uniform_buffer_descriptor.label(&format!("uniforms for obj: {}", i));
-            let uniform_buffer = self.gpu_device.create_buffer(&uniform_buffer_descriptor);   
+            let uniform_buffer = self.gpu_device.create_buffer(&uniform_buffer_descriptor);
+
             let uniform_values = Float32Array::new_with_length(uniform_buffer_size / 4);
 
-            let color = [rand(None, None), rand(None, None), rand(None, None), 1.0];
-            let color_array = Float32Array::new_with_length(color.len() as u32);
-            color_array.copy_from(&color);
-            uniform_values.set(&color_array, k_color_offset);       // set the color
+            let bind_group_0_entry_0_resource = GpuBufferBinding::new(&static_uniform_buffer);
+            let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &bind_group_0_entry_0_resource);
 
-            let offset = [rand(Some(-0.9), Some(0.9)), rand(Some(-0.9), Some(0.9))];
-            let offset_array = Float32Array::new_with_length(offset.len() as u32);
-            offset_array.copy_from(&offset);
-            uniform_values.set(&offset_array, k_offset_offset);     // set the offset
-
-            let bind_group_0_entry_resource = GpuBufferBinding::new(&uniform_buffer);
-            let bind_group_0_entry = GpuBindGroupEntry::new(0, &bind_group_0_entry_resource);
+            let bind_group_0_entry_1_resource = GpuBufferBinding::new(&uniform_buffer);
+            let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &bind_group_0_entry_1_resource);
         
-            let bind_group_0_entries = [bind_group_0_entry].iter().collect::<js_sys::Array>();
+            let bind_group_0_entries = [bind_group_0_entry_0, bind_group_0_entry_1].iter().collect::<js_sys::Array>();
             let mut bind_group_0_descriptor = GpuBindGroupDescriptor::new(
                 &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
             );
