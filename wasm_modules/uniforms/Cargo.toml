@@ -62,3 +62,6 @@ web-sys = { version = "0.3.64", features = [
 ] }
 
 js-sys = "0.3.64"
+
+rand = "0.8.5"
+getrandom = { version = "0.2.10", features = ["js"] }
