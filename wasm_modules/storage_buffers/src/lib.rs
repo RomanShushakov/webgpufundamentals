@@ -24,6 +24,67 @@ extern "C"
 }
 
 
+fn rand(min: Option<f32>, max: Option<f32>) -> f32
+{
+    let mut rng = thread_rng();
+    if min.is_none() { return rng.gen_range(0.0..1.0); };
+    if max.is_none() { return rng.gen_range(0.0..min.unwrap()); };
+    rng.gen_range(min.unwrap()..max.unwrap())
+}
+
+
+fn create_circle_vertices(radius: Option<f32>, inner_radius: Option<f32>) -> (Float32Array, u32)
+{
+    let radius = if let Some(r) = radius { r } else { 1f32 };
+    let num_subdivisions = 24;
+    let inner_radius = if let Some(i_r) = inner_radius { i_r } else { 0f32 };
+    let start_angle = 0f32;
+    let end_angle = std::f32::consts::PI * 2.0;
+
+    // 2 triangles per subdivision, 3 verts per tri, 2 values (xy) each.
+    let num_vertices = num_subdivisions * 3 * 2;
+    let vertex_data = Float32Array::new_with_length(num_subdivisions * 2 * 3 * 2);
+   
+    let mut offset = 0;
+    let mut add_vertex = |x, y| 
+        {
+            vertex_data.set_index(offset, x);
+            offset += 1;
+            vertex_data.set_index(offset, y);
+            offset += 1;
+        };
+   
+    // 2 vertices per subdivision
+    //
+    // 0--1 4
+    // | / /|
+    // |/ / |
+    // 2 3--5
+    for i in 0..num_subdivisions 
+    {
+      let angle1 = start_angle + (i + 0) as f32 * (end_angle - start_angle) / num_subdivisions as f32;
+      let angle2 = start_angle + (i + 1) as f32 * (end_angle - start_angle) / num_subdivisions as f32;
+   
+      let c1 = angle1.cos();
+      let s1 = angle1.sin();
+      let c2 = angle2.cos();
+      let s2 = angle2.sin();
+   
+      // first triangle
+      add_vertex(c1 * radius, s1 * radius);
+      add_vertex(c2 * radius, s2 * radius);
+      add_vertex(c1 * inner_radius, s1 * inner_radius);
+   
+      // second triangle
+      add_vertex(c1 * inner_radius, s1 * inner_radius);
+      add_vertex(c2 * radius, s2 * radius);
+      add_vertex(c2 * inner_radius, s2 * inner_radius);
+    }
+   
+    (vertex_data, num_vertices)
+}
+
+
 #[wasm_bindgen]
 pub struct Scene 
 {
@@ -65,14 +126,6 @@ impl Scene
         render_pipeline_descriptor.label("triangle with storage buffers");
         render_pipeline_descriptor.fragment(&fragment_state);
         let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
-
-        let rand = |min: Option<f32>, max: Option<f32>| 
-            {
-                let mut rng = thread_rng();
-                if min.is_none() { return rng.gen_range(0.0..1.0); };
-                if max.is_none() { return rng.gen_range(0.0..min.unwrap()); };
-                rng.gen_range(min.unwrap()..max.unwrap())
-            };
 
         let k_num_objects = 100;
         let mut object_infos = Vec::new();
@@ -131,13 +184,31 @@ impl Scene
         // a typed array we can use to update the changingStorageBuffer
         let storage_values = Float32Array::new_with_length(changing_storage_buffer_size / 4);
 
+        // setup a storage buffer with vertex data
+        let (vertex_data, num_vertices) = create_circle_vertices(Some(0.5), Some(0.25));
+
+        let mut vertex_storage_buffer_descriptor = GpuBufferDescriptor::new(
+            vertex_data.byte_length().into(),
+            STORAGE | COPY_DST,
+        );
+        vertex_storage_buffer_descriptor.label("storage buffer vertices");
+        let vertex_storage_buffer = self.gpu_device.create_buffer(&vertex_storage_buffer_descriptor);
+        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+            &vertex_storage_buffer, 0, &vertex_data,
+        );
+
         let bind_group_0_entry_0_resource = GpuBufferBinding::new(&static_storage_buffer);
         let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &bind_group_0_entry_0_resource);
 
         let bind_group_0_entry_1_resource = GpuBufferBinding::new(&changing_storage_buffer);
         let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &bind_group_0_entry_1_resource);
+
+        let bind_group_0_entry_2_resource = GpuBufferBinding::new(&vertex_storage_buffer);
+        let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &bind_group_0_entry_2_resource);
     
-        let bind_group_0_entries = [bind_group_0_entry_0, bind_group_0_entry_1].iter().collect::<js_sys::Array>();
+        let bind_group_0_entries = [
+            bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
+        ].iter().collect::<js_sys::Array>();
         let mut bind_group_0_descriptor = GpuBindGroupDescriptor::new(
             &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
         );
@@ -170,11 +241,10 @@ impl Scene
             scale_array.copy_from(&scale_vec);
             storage_values.set(&scale_array, offset + k_scale_offset);   // set the scale
         }
-
         self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(&changing_storage_buffer, 0, &storage_values);
 
         render_pass_encoder.set_bind_group(0, &bind_group_0);
-        render_pass_encoder.draw_with_instance_count(3, k_num_objects);
+        render_pass_encoder.draw_with_instance_count(num_vertices, k_num_objects);
 
         render_pass_encoder.end();
 

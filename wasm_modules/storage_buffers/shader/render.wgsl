@@ -7,6 +7,10 @@ struct OtherStruct {
     scale: vec2f,
 };
 
+struct Vertex {
+    position: vec2f,
+};
+
 struct VSOutput {
   @builtin(position) position: vec4f,
   @location(0) color: vec4f,
@@ -14,6 +18,7 @@ struct VSOutput {
  
 @group(0) @binding(0) var<storage, read> our_structs: array<OurStruct>;
 @group(0) @binding(1) var<storage, read> other_structs: array<OtherStruct>;
+@group(0) @binding(2) var<storage, read> pos: array<Vertex>;
 
 
 @vertex 
@@ -23,18 +28,11 @@ fn vertex_main(
 ) 
     -> VSOutput
 {
-    var pos = array(
-        vec2(0.0, 0.5),
-        vec2(-0.5, -0.5),
-        vec2(0.5, -0.5),
-    );
-
     var our_struct = our_structs[instance_index];
     var other_struct = other_structs[instance_index];
 
     var vs_out: VSOutput;
-    vs_out.position = vec4f(
-        pos[vertex_index] * other_struct.scale + our_struct.offset, 0.0, 1.0);
+    vs_out.position = vec4f(pos[vertex_index].position * other_struct.scale + our_struct.offset, 0.0, 1.0);
     vs_out.color = our_struct.color;
     return vs_out;
 }
