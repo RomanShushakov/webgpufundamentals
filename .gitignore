@@ -11,3 +11,6 @@ wasm_modules/inter_stage_variables/target
 
 wasm_modules/uniforms/Cargo.lock
 wasm_modules/uniforms/target
+
+wasm_modules/storage_buffers/Cargo.lock
+wasm_modules/storage_buffers/target
