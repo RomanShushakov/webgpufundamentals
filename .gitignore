@@ -14,3 +14,6 @@ wasm_modules/uniforms/target
 
 wasm_modules/storage_buffers/Cargo.lock
 wasm_modules/storage_buffers/target
+
+wasm_modules/vertex_buffers/Cargo.lock
+wasm_modules/vertex_buffers/target
