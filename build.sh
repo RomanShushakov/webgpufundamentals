@@ -2,7 +2,8 @@ wasmModules=(
     ./wasm_modules/fundamentals fundamentals
     ../inter_stage_variables inter_stage_variables
     ../uniforms uniforms
-    ../storage_buffers storage_buffers 
+    ../storage_buffers storage_buffers
+    ../vertex_buffers vertex_buffers 
 )
 
 len=(${#wasmModules[@]})
