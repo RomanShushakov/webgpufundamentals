@@ -4,13 +4,13 @@ use web_sys::
 {
     GpuDevice, GpuCanvasContext, GpuTextureFormat, GpuShaderModuleDescriptor, GpuVertexState, GpuColorTargetState, 
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
-    GpuRenderPassDescriptor, GpuBufferDescriptor,
-    HtmlCanvasElement, GpuVertexBufferLayout, GpuVertexAttribute, GpuVertexFormat, GpuVertexStepMode,
+    GpuRenderPassDescriptor, GpuBufferDescriptor, HtmlCanvasElement, GpuVertexBufferLayout, GpuVertexAttribute, 
+    GpuVertexFormat, GpuVertexStepMode, GpuIndexFormat,
 
 };
-use web_sys::gpu_buffer_usage::{COPY_DST, VERTEX};
+use web_sys::gpu_buffer_usage::{COPY_DST, VERTEX, INDEX};
 
-use js_sys::{Float32Array, Uint8Array};
+use js_sys::{Float32Array, Uint8Array, Uint32Array};
 
 use rand::{thread_rng, Rng};
 
@@ -32,7 +32,7 @@ fn rand(min: Option<f32>, max: Option<f32>) -> f32
 }
 
 
-fn create_circle_vertices(radius: Option<f32>, inner_radius: Option<f32>) -> (Float32Array, u32)
+fn create_circle_vertices(radius: Option<f32>, inner_radius: Option<f32>) -> (Float32Array, Uint32Array, u32)
 {
     let radius = if let Some(r) = radius { r } else { 1f32 };
     let num_subdivisions = 24;
@@ -40,8 +40,8 @@ fn create_circle_vertices(radius: Option<f32>, inner_radius: Option<f32>) -> (Fl
     let start_angle = 0f32;
     let end_angle = std::f32::consts::PI * 2.0;
 
-    // 2 triangles per subdivision, 3 verts per tri
-    let num_vertices = num_subdivisions * 3 * 2;
+    // 2 vertices at each subdivision, + 1 to wrap around the circle.
+    let num_vertices = (num_subdivisions + 1) * 2;
     
     // 2 32-bit values for position (xy) and 1 32-bit value for color (rgb_)
     // The 32-bit color value will be written/read as 4 8-bit values
@@ -70,35 +70,54 @@ fn create_circle_vertices(radius: Option<f32>, inner_radius: Option<f32>) -> (Fl
 
     let inner_color = [1.0, 1.0, 1.0];
     let outer_color = [0.1, 0.1, 0.1];
-   
+
     // 2 vertices per subdivision
     //
-    // 0--1 4
-    // | / /|
-    // |/ / |
-    // 2 3--5
-    for i in 0..num_subdivisions 
+    // 0  2  4  6  8 ...
+    //
+    // 1  3  5  7  9 ...
+    for i in 0..=num_subdivisions
     {
-      let angle1 = start_angle + (i + 0) as f32 * (end_angle - start_angle) / num_subdivisions as f32;
-      let angle2 = start_angle + (i + 1) as f32 * (end_angle - start_angle) / num_subdivisions as f32;
-   
-      let c1 = angle1.cos();
-      let s1 = angle1.sin();
-      let c2 = angle2.cos();
-      let s2 = angle2.sin();
-   
-      // first triangle
-      add_vertex(c1 * radius, s1 * radius, outer_color[0], outer_color[1], outer_color[2]);
-      add_vertex(c2 * radius, s2 * radius, outer_color[0], outer_color[1], outer_color[2]);
-      add_vertex(c1 * inner_radius, s1 * inner_radius, inner_color[0], inner_color[1], inner_color[2]);
-   
-      // second triangle
-      add_vertex(c1 * inner_radius, s1 * inner_radius, inner_color[0], inner_color[1], inner_color[2]);
-      add_vertex(c2 * radius, s2 * radius, outer_color[0], outer_color[1], outer_color[2]);
-      add_vertex(c2 * inner_radius, s2 * inner_radius, inner_color[0], inner_color[1], inner_color[2]);
+        let angle = start_angle + (i + 0) as f32 * (end_angle - start_angle) / num_subdivisions as f32;
+ 
+        let c1 = angle.cos();
+        let s1 = angle.sin();
+ 
+        add_vertex(c1 * radius, s1 * radius, outer_color[0], outer_color[1], outer_color[2]);
+        add_vertex(c1 * inner_radius, s1 * inner_radius, inner_color[0], inner_color[1], inner_color[2]);
     }
+ 
+    let index_data = Uint32Array::new_with_length(num_subdivisions * 6);
+    let mut ndx = 0;
+ 
+    // 0---2---4---...
+    // | //| //|
+    // |// |// |//
+    // 1---3-- 5---...
+    for i in 0..num_subdivisions
+    {
+        let ndx_offset = i * 2;
+ 
+        // first triangle
+        index_data.set_index(ndx, ndx_offset);
+        ndx += 1;
+        index_data.set_index(ndx, ndx_offset + 1);
+        ndx += 1;
+        index_data.set_index(ndx, ndx_offset + 2);
+        ndx += 1;
+ 
+        // second triangle
+        index_data.set_index(ndx, ndx_offset + 2);
+        ndx += 1;
+        index_data.set_index(ndx, ndx_offset + 1);
+        ndx += 1;
+        index_data.set_index(ndx, ndx_offset + 3);
+        ndx += 1;
+    }
+
+    let num_indexes = index_data.length();
    
-    (vertex_data, num_vertices)
+    (vertex_data, index_data, num_indexes)
 }
 
 
@@ -266,7 +285,8 @@ impl Scene
         let changing_vertex_values = Float32Array::new_with_length(changing_vertex_buffer_size / 4);
 
         // setup a storage buffer with vertex data
-        let (vertex_data, num_vertices) = create_circle_vertices(Some(0.5), Some(0.25));
+        let (vertex_data, index_data, num_indexes) = 
+            create_circle_vertices(Some(0.5), Some(0.25));
 
         let mut vertex_buffer_descriptor = GpuBufferDescriptor::new(
             vertex_data.byte_length().into(),
@@ -276,6 +296,16 @@ impl Scene
         let vertex_buffer = self.gpu_device.create_buffer(&vertex_buffer_descriptor);
         self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &vertex_buffer, 0, &vertex_data,
+        );
+
+        let mut index_buffer_descriptor = GpuBufferDescriptor::new(
+            index_data.byte_length().into(),
+            INDEX | COPY_DST,
+        );
+        let index_buffer = self.gpu_device.create_buffer(&index_buffer_descriptor);
+        index_buffer_descriptor.label("index buffer");
+        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+            &index_buffer, 0, &index_data,
         );
 
         let mut color_attachment = GpuRenderPassColorAttachment::new(
@@ -294,6 +324,7 @@ impl Scene
         render_pass_encoder.set_vertex_buffer(0, &vertex_buffer);
         render_pass_encoder.set_vertex_buffer(1, &static_vertex_buffer);
         render_pass_encoder.set_vertex_buffer(2, &changing_vertex_buffer);
+        render_pass_encoder.set_index_buffer(&index_buffer, GpuIndexFormat::Uint32);
 
         let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
         let aspect = canvas.width() / canvas.height();
@@ -311,7 +342,7 @@ impl Scene
             &changing_vertex_buffer, 0, &changing_vertex_values,
         );
 
-        render_pass_encoder.draw_with_instance_count(num_vertices, k_num_objects);
+        render_pass_encoder.draw_indexed_with_instance_count(num_indexes, k_num_objects);
 
         render_pass_encoder.end();
 
