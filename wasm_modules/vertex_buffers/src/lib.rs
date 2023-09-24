@@ -10,7 +10,7 @@ use web_sys::
 };
 use web_sys::gpu_buffer_usage::{COPY_DST, VERTEX};
 
-use js_sys::Float32Array;
+use js_sys::{Float32Array, Uint8Array};
 
 use rand::{thread_rng, Rng};
 
@@ -40,18 +40,36 @@ fn create_circle_vertices(radius: Option<f32>, inner_radius: Option<f32>) -> (Fl
     let start_angle = 0f32;
     let end_angle = std::f32::consts::PI * 2.0;
 
-    // 2 triangles per subdivision, 3 verts per tri, 2 values (xy) each.
+    // 2 triangles per subdivision, 3 verts per tri
     let num_vertices = num_subdivisions * 3 * 2;
-    let vertex_data = Float32Array::new_with_length(num_subdivisions * 2 * 3 * 2);
+    
+    // 2 32-bit values for position (xy) and 1 32-bit value for color (rgb_)
+    // The 32-bit color value will be written/read as 4 8-bit values
+    let vertex_data = Float32Array::new_with_length(num_vertices * (2 + 1));
+    let color_data = Uint8Array::new(&vertex_data.buffer());
    
     let mut offset = 0;
-    let mut add_vertex = |x, y| 
+    let mut color_offset = 8;
+
+    let mut add_vertex = |x, y, r, g, b| 
         {
             vertex_data.set_index(offset, x);
             offset += 1;
             vertex_data.set_index(offset, y);
             offset += 1;
+            offset += 1;    // skip the color
+
+            color_data.set_index(color_offset, (r * 255.0) as u8);
+            color_offset += 1;
+            color_data.set_index(color_offset, (g * 255.0) as u8);
+            color_offset += 1;
+            color_data.set_index(color_offset, (b * 255.0) as u8);
+            color_offset += 1;
+            color_offset += 9;  // skip extra byte and the position
         };
+
+    let inner_color = [1.0, 1.0, 1.0];
+    let outer_color = [0.1, 0.1, 0.1];
    
     // 2 vertices per subdivision
     //
@@ -70,14 +88,14 @@ fn create_circle_vertices(radius: Option<f32>, inner_radius: Option<f32>) -> (Fl
       let s2 = angle2.sin();
    
       // first triangle
-      add_vertex(c1 * radius, s1 * radius);
-      add_vertex(c2 * radius, s2 * radius);
-      add_vertex(c1 * inner_radius, s1 * inner_radius);
+      add_vertex(c1 * radius, s1 * radius, outer_color[0], outer_color[1], outer_color[2]);
+      add_vertex(c2 * radius, s2 * radius, outer_color[0], outer_color[1], outer_color[2]);
+      add_vertex(c1 * inner_radius, s1 * inner_radius, inner_color[0], inner_color[1], inner_color[2]);
    
       // second triangle
-      add_vertex(c1 * inner_radius, s1 * inner_radius);
-      add_vertex(c2 * radius, s2 * radius);
-      add_vertex(c2 * inner_radius, s2 * inner_radius);
+      add_vertex(c1 * inner_radius, s1 * inner_radius, inner_color[0], inner_color[1], inner_color[2]);
+      add_vertex(c2 * radius, s2 * radius, outer_color[0], outer_color[1], outer_color[2]);
+      add_vertex(c2 * inner_radius, s2 * inner_radius, inner_color[0], inner_color[1], inner_color[2]);
     }
    
     (vertex_data, num_vertices)
@@ -124,26 +142,30 @@ impl Scene
         let vertex_position_buffer_attribute = GpuVertexAttribute::new(
             vertex_position_format, 0f64, 0,    // position
         );
+        let per_vertex_color_format = GpuVertexFormat::Unorm8x4;
+        let per_vertex_color_buffer_attribute = GpuVertexAttribute::new(
+            per_vertex_color_format, 8f64, 4,    // per vertex color
+        );
         let vertex_position_buffer_attributes = [
-            vertex_position_buffer_attribute,
+            vertex_position_buffer_attribute, per_vertex_color_buffer_attribute,
         ].iter().collect::<js_sys::Array>();
         let vertex_position_buffer_layout = GpuVertexBufferLayout::new(
-            2f64 * 4f64, &vertex_position_buffer_attributes,    // 2 floats, 4 bytes each
+            2f64 * 4f64 + 4f64, &vertex_position_buffer_attributes,    // 2 floats, 4 bytes each + 4 bytes
         );
 
-        let vertex_color_format = GpuVertexFormat::Float32x4;
+        let vertex_color_format = GpuVertexFormat::Unorm8x4;
         let vertex_color_buffer_attribute = GpuVertexAttribute::new(
             vertex_color_format, 0f64, 1,   // color
         );
         let vertex_offset_format = GpuVertexFormat::Float32x2;
         let vertex_offset_buffer_attribute = GpuVertexAttribute::new(
-            vertex_offset_format, 16f64, 2,   // offset
+            vertex_offset_format, 4f64, 2,   // offset
         );
         let vertex_color_offset_buffer_attributes = [
             vertex_color_buffer_attribute, vertex_offset_buffer_attribute,
         ].iter().collect::<js_sys::Array>();
         let mut vertex_color_offset_buffer_layout = GpuVertexBufferLayout::new(
-            6f64 * 4f64, &vertex_color_offset_buffer_attributes,    // 6 floats, 4 bytes each
+            4f64 + 2f64 * 4f64, &vertex_color_offset_buffer_attributes,    // 4 bytes + 2 floats, 4 bytes each
         );
         vertex_color_offset_buffer_layout.step_mode(GpuVertexStepMode::Instance);
 
@@ -177,8 +199,9 @@ impl Scene
         let k_num_objects = 100;
         let mut object_infos = Vec::new();
 
+        // create 2 vertex buffers
         let static_unit_size =
-            4 * 4 + // color is 4 32bit floats (4bytes each)
+            4 +     // color is 4 bytes
             2 * 4;  // offset is 2 32bit floats (4bytes each)
 
         let changing_unit_size =
@@ -202,29 +225,41 @@ impl Scene
         let changing_vertex_buffer = self.gpu_device.create_buffer(&changing_vertex_buffer_descriptor);
 
         let k_color_offset = 0u32;
-        let k_offset_offset = 4u32;
+        let k_offset_offset = 1u32;
         let k_scale_offset = 0u32;
         
-        let static_vertex_values = Float32Array::new_with_length(static_vertex_buffer_size / 4);
+        let static_vertex_values_u8 = Uint8Array::new_with_length(static_vertex_buffer_size);
+        let static_vertex_values_f32 = Float32Array::new(&static_vertex_values_u8.buffer());
 
         for i in 0..k_num_objects 
         {
-            let static_offset = i * (static_unit_size / 4);
+            // let static_offset = i * (static_unit_size / 4);
+            let static_offset_u8 = i * static_unit_size;
+            let static_offset_f32 = static_offset_u8 / 4;
 
             // These are only set once so set them now
-            let color = [rand(None, None), rand(None, None), rand(None, None), 1.0];
-            let color_array = Float32Array::new_with_length(color.len() as u32);
+            let color = [
+                (rand(None, None) * 255.0) as u8, 
+                (rand(None, None) * 255.0) as u8, 
+                (rand(None, None) * 255.0) as u8,
+                255,
+            ];
+            let color_array = Uint8Array::new_with_length(color.len() as u32);
             color_array.copy_from(&color);
-            static_vertex_values.set(&color_array, static_offset + k_color_offset);    // set the color
-            let offset = [rand(Some(-0.9), Some(0.9)), rand(Some(-0.9), Some(0.9))];
+            static_vertex_values_u8.set(&color_array, static_offset_u8 + k_color_offset);    // set the color
+
+            let offset = [
+                rand(Some(-0.9), Some(0.9)), 
+                rand(Some(-0.9), Some(0.9)),
+            ];
             let offset_array = Float32Array::new_with_length(offset.len() as u32);
             offset_array.copy_from(&offset);
-            static_vertex_values.set(&offset_array, static_offset + k_offset_offset);  // set the offset
+            static_vertex_values_f32.set(&offset_array, static_offset_f32 + k_offset_offset);  // set the offset
 
             object_infos.push(rand(Some(0.2), Some(0.5)));
         }
         self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
-            &static_vertex_buffer, 0, &static_vertex_values,
+            &static_vertex_buffer, 0, &static_vertex_values_f32,
         );
 
         // a typed array we can use to update the changingStorageBuffer
