@@ -3,7 +3,8 @@ wasmModules=(
     ../inter_stage_variables inter_stage_variables
     ../uniforms uniforms
     ../storage_buffers storage_buffers
-    ../vertex_buffers vertex_buffers 
+    ../vertex_buffers vertex_buffers
+    ../textures textures 
 )
 
 len=(${#wasmModules[@]})
