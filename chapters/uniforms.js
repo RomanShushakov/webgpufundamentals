@@ -1,7 +1,7 @@
-import { initUniforms } from "./wasm_modules_initialization/uniforms_init.js";
+import { initUniforms } from "../wasm_modules_initialization/uniforms_init.js";
 
 
-export async function mainUniforms() {
+export async function mainUniforms(canvas) {
     if (!navigator.gpu) {
         fail('this browser does not support WebGPU');
         return;
@@ -24,7 +24,6 @@ export async function mainUniforms() {
         }
     });
 
-    const canvas = document.getElementById("canvas");
     if (!canvas) {
         console.log("There are no canvas provided")
         return;

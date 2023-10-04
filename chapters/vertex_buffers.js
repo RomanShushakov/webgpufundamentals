@@ -1,7 +1,7 @@
 import { initVertexBuffers } from "../wasm_modules_initialization/vertex_buffers_init.js";
 
 
-export async function mainVertexBuffers() {
+export async function mainVertexBuffers(canvas) {
     if (!navigator.gpu) {
         fail('this browser does not support WebGPU');
         return;
@@ -24,7 +24,6 @@ export async function mainVertexBuffers() {
         }
     });
 
-    const canvas = document.getElementById("canvas");
     if (!canvas) {
         console.log("There are no canvas provided")
         return;

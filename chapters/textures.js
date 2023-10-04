@@ -1,7 +1,7 @@
 import { initTextures } from "../wasm_modules_initialization/textures_init.js";
 
 
-export async function mainTextures() {
+export async function mainTextures(canvas) {
     if (!navigator.gpu) {
         fail('this browser does not support WebGPU');
         return;
@@ -24,7 +24,6 @@ export async function mainTextures() {
         }
     });
 
-    const canvas = document.getElementById("canvas");
     if (!canvas) {
         console.log("There are no canvas provided")
         return;

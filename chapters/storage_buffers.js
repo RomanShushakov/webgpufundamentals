@@ -1,7 +1,7 @@
-import { initStorageBuffers } from "./wasm_modules_initialization/storage_buffers_init.js";
+import { initStorageBuffers } from "../wasm_modules_initialization/storage_buffers_init.js";
 
 
-export async function mainStorageBuffers() {
+export async function mainStorageBuffers(canvas) {
     if (!navigator.gpu) {
         fail('this browser does not support WebGPU');
         return;
@@ -24,7 +24,6 @@ export async function mainStorageBuffers() {
         }
     });
 
-    const canvas = document.getElementById("canvas");
     if (!canvas) {
         console.log("There are no canvas provided")
         return;

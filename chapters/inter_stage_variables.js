@@ -1,7 +1,7 @@
-import { initInterStageVariables } from "./wasm_modules_initialization/inter_stage_variables_init.js";
+import { initInterStageVariables } from "../wasm_modules_initialization/inter_stage_variables_init.js";
 
 
-export async function mainInterStageVariables() {
+export async function mainInterStageVariables(canvas) {
     if (!navigator.gpu) {
         fail('this browser does not support WebGPU');
         return;
@@ -24,7 +24,6 @@ export async function mainInterStageVariables() {
         }
     });
 
-    const canvas = document.getElementById("canvas");
     if (!canvas) {
         console.log("There are no canvas provided")
         return;
