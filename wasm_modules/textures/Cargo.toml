@@ -48,6 +48,17 @@ web-sys = { version = "0.3.64", features = [
     "GpuVertexFormat",
     "GpuVertexStepMode",
     "GpuIndexFormat",
+    "GpuTextureDescriptor",
+    "gpu_texture_usage",
+    "GpuImageCopyTexture",
+    "GpuImageDataLayout",
+    "GpuExtent3dDict",
+    "GpuSampler",
+    "GpuBufferBinding",
+    "GpuBindGroupEntry",
+    "GpuBindGroupDescriptor",
+    "GpuBindGroupLayout",
+    "GpuBindGroup",
 ] }
 
 js-sys = "0.3.64"
