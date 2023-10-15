@@ -8,6 +8,7 @@
         "build": "vite build"
     },
     "devDependencies": {
-        "vite": "4.4.11"
+        "vite": "4.4.11",
+        "dat.gui": "0.7.9"
     }
 }

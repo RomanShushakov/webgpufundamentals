@@ -1,5 +1,35 @@
 import { initTextures } from "../wasm_modules_initialization/textures_init.js";
+import * as dat from "dat.gui";
 
+const settings = {
+    addressModeU: "repeat",
+    addressModeV: "repeat",
+    magFilter: "linear",
+};
+
+function findIndex(settings) {
+    return (settings.addressModeU === 'repeat' ? 1 : 0) + 
+        (settings.addressModeV === 'repeat' ? 2 : 0) +
+        (settings.magFilter === 'linear' ? 4 : 0);
+}
+
+let gui;
+function addGUI(scene) {
+    const addressOptions = ["repeat", "clamp-to-edge"];
+    const filterOptions = ["nearest", "linear"];
+
+    gui = new dat.GUI();
+    Object.assign(gui.domElement.style, { position: "absolute", left: "0", top: "2rem" });
+
+    gui.add(settings, "addressModeU", addressOptions).onChange(() => scene.render(findIndex(settings)));
+    gui.add(settings, "addressModeV", addressOptions).onChange(() => scene.render(findIndex(settings)));
+    gui.add(settings, "magFilter", filterOptions).onChange(() => scene.render(findIndex(settings)));
+}
+
+export function destroyTexturesGUI() {
+    gui?.destroy();
+    gui = undefined;
+}
 
 export async function mainTextures(canvas) {
     if (!navigator.gpu) {
@@ -20,7 +50,7 @@ export async function mainTextures(canvas) {
         // 'reason' will be 'destroyed' if we intentionally destroy the device.
         if (info.reason !== 'destroyed') {
             // try again
-            mainTextures();
+            mainTextures(canvas);
         }
     });
 
@@ -39,6 +69,8 @@ export async function mainTextures(canvas) {
 
     const scene = await initTextures(device, context, gpuTextureFormat);
 
+    addGUI(scene);
+
     const observer = new ResizeObserver(entries => {
         for (const entry of entries) {
             const canvas = entry.target;
@@ -47,7 +79,7 @@ export async function mainTextures(canvas) {
             canvas.width = Math.min(width, device.limits.maxTextureDimension2D);
             canvas.height = Math.min(height, device.limits.maxTextureDimension2D);
             // re-render
-            scene.render();
+            scene.render(findIndex(settings));
         }
     });
     observer.observe(canvas);

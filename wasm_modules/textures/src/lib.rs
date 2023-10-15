@@ -5,7 +5,7 @@ use web_sys::
     GpuDevice, GpuCanvasContext, GpuTextureFormat, GpuShaderModuleDescriptor, GpuVertexState, GpuColorTargetState, 
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuImageCopyTexture, GpuImageDataLayout, GpuExtent3dDict,
-    GpuBindGroupEntry, GpuBindGroupDescriptor,
+    GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode,
 };
 
 use web_sys::gpu_texture_usage::
@@ -45,7 +45,7 @@ impl Scene
     }
 
 
-    pub fn render(&self)
+    pub fn render(&self, ndx: usize)
     {
         let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
         render_shader_module_descriptor.label("our hardcoded textured quad shaders");
@@ -59,8 +59,9 @@ impl Scene
 
         let render_layout = JsValue::from("auto");
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
-        render_pipeline_descriptor.label("hardcoded textured quad pipeline");
-        render_pipeline_descriptor.fragment(&fragment_state);
+        render_pipeline_descriptor
+            .label("hardcoded textured quad pipeline")
+            .fragment(&fragment_state);
         let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
         let k_texture_width = 5;
@@ -102,16 +103,26 @@ impl Scene
             &gpu_extent_3d_dict,
         );
 
-        let sampler = self.gpu_device.create_sampler();
+        let mut bind_groups = Vec::new();
+        for i in 0..8
+        {
+            let mut sampler_descriptor = GpuSamplerDescriptor::new();
+            sampler_descriptor
+                .address_mode_u(if (i & 1) == 1 { GpuAddressMode::Repeat } else { GpuAddressMode::ClampToEdge })
+                .address_mode_v(if (i & 2) == 2 { GpuAddressMode::Repeat } else { GpuAddressMode::ClampToEdge })
+                .mag_filter(if (i & 4) == 4 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest });
+            let sampler = self.gpu_device.create_sampler_with_descriptor(&sampler_descriptor);
 
-        let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
-        let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
-        let bind_group_0_entries = [bind_group_0_entry_0, bind_group_0_entry_1].iter().collect::<js_sys::Array>();
-
-        let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
-            &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
-        );
-        let bind_group_0 = self.gpu_device.create_bind_group(&bind_group_0_descriptor);
+            let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
+            let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
+            let bind_group_0_entries = [bind_group_0_entry_0, bind_group_0_entry_1].iter().collect::<js_sys::Array>();
+    
+            let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
+                &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
+            );
+            let bind_group_0 = self.gpu_device.create_bind_group(&bind_group_0_descriptor);
+            bind_groups.push(bind_group_0);
+        }
 
         let mut color_attachment = GpuRenderPassColorAttachment::new(
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
@@ -126,7 +137,7 @@ impl Scene
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
         render_pass_encoder.set_pipeline(&render_pipeline);
-        render_pass_encoder.set_bind_group(0, &bind_group_0);
+        render_pass_encoder.set_bind_group(0, &bind_groups[ndx]);
         render_pass_encoder.draw(6);
         render_pass_encoder.end();
 

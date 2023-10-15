@@ -3,7 +3,7 @@ import { mainInterStageVariables } from "./chapters/inter_stage_variables.js";
 import { mainUniforms } from "./chapters/uniforms.js";
 import { mainStorageBuffers } from "./chapters/storage_buffers.js";
 import { mainVertexBuffers } from "./chapters/vertex_buffers.js";
-import { mainTextures } from "./chapters/textures.js";
+import { mainTextures, destroyTexturesGUI } from "./chapters/textures.js";
 
 
 export class CustomApp extends HTMLElement {
@@ -104,24 +104,30 @@ export class CustomApp extends HTMLElement {
         switch (selectedChapter) {
             case 'fundamentals':
                 await mainFundamentals(this.state.canvas);
+                destroyTexturesGUI();
                 break;
             case 'inter_stage_variables':
                 await mainInterStageVariables(this.state.canvas);
+                destroyTexturesGUI();
                 break;
             case 'uniforms':
                 await mainUniforms(this.state.canvas);
+                destroyTexturesGUI();
                 break;
             case 'storage_buffers':
                 await mainStorageBuffers(this.state.canvas);
+                destroyTexturesGUI();
                 break;
             case 'vertex_buffers':
                 await mainVertexBuffers(this.state.canvas);
+                destroyTexturesGUI();
                 break;
             case 'textures':
                 await mainTextures(this.state.canvas);
                 break;
             default:
                 await mainFundamentals(this.state.canvas);
+                destroyTexturesGUI();
         }
     }
 

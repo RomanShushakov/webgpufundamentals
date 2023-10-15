@@ -59,6 +59,9 @@ web-sys = { version = "0.3.64", features = [
     "GpuBindGroupDescriptor",
     "GpuBindGroupLayout",
     "GpuBindGroup",
+    "GpuSamplerDescriptor",
+    "GpuAddressMode",
+    "GpuFilterMode",
 ] }
 
 js-sys = "0.3.64"
