@@ -5,7 +5,7 @@ use web_sys::
     GpuDevice, GpuCanvasContext, GpuTextureFormat, GpuShaderModuleDescriptor, GpuVertexState, GpuColorTargetState, 
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
     GpuRenderPassDescriptor, GpuBufferDescriptor, HtmlCanvasElement, GpuVertexBufferLayout, GpuVertexAttribute, 
-    GpuVertexFormat, GpuVertexStepMode, GpuIndexFormat,
+    GpuVertexFormat, GpuVertexStepMode, GpuIndexFormat, GpuRenderPipeline, GpuBuffer,
 
 };
 use web_sys::gpu_buffer_usage::{COPY_DST, VERTEX, INDEX};
@@ -126,7 +126,16 @@ pub struct Scene
 {
     gpu_device: GpuDevice,
     context: GpuCanvasContext,
-    gpu_texture_format: GpuTextureFormat,
+    vertex_buffer: GpuBuffer,
+    static_vertex_buffer: GpuBuffer,
+    changing_vertex_buffer: GpuBuffer,
+    index_buffer: GpuBuffer,
+    render_pipeline: GpuRenderPipeline,
+    object_infos: Vec<f32>,
+    changing_unit_size: u32,
+    changing_vertex_values: Float32Array,
+    num_indexes: u32,
+    k_num_objects: u32,
 }
 
 
@@ -138,20 +147,11 @@ impl Scene
     ) 
         -> Self
     {
-        Scene 
-        {
-            gpu_device, context, gpu_texture_format,
-        }
-    }
-
-
-    pub fn render(&self)
-    {
         let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(
             &include_str!("../shader/render.wgsl"),
         );
         render_shader_module_descriptor.label("triangle shaders with vertex buffers");
-        let render_shader_module = self.gpu_device.create_shader_module(
+        let render_shader_module = gpu_device.create_shader_module(
             &render_shader_module_descriptor,
         );
 
@@ -205,7 +205,7 @@ impl Scene
         ].iter().collect::<js_sys::Array>();
         vertex_state.buffers(&vertex_buffers);
 
-        let color_target_state = GpuColorTargetState::new(self.gpu_texture_format);
+        let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
 
@@ -213,7 +213,7 @@ impl Scene
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
         render_pipeline_descriptor.label("triangle with vertex buffers");
         render_pipeline_descriptor.fragment(&fragment_state);
-        let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
+        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
         let k_num_objects = 100;
         let mut object_infos = Vec::new();
@@ -234,18 +234,17 @@ impl Scene
             VERTEX | COPY_DST,
         );
         static_vertex_buffer_descriptor.label("static storage for objects");
-        let static_vertex_buffer = self.gpu_device.create_buffer(&static_vertex_buffer_descriptor); 
+        let static_vertex_buffer = gpu_device.create_buffer(&static_vertex_buffer_descriptor); 
 
         let mut changing_vertex_buffer_descriptor = GpuBufferDescriptor::new(
             changing_vertex_buffer_size.into(),
             VERTEX | COPY_DST,
         );
         changing_vertex_buffer_descriptor.label("changing storage for objects");
-        let changing_vertex_buffer = self.gpu_device.create_buffer(&changing_vertex_buffer_descriptor);
+        let changing_vertex_buffer = gpu_device.create_buffer(&changing_vertex_buffer_descriptor);
 
         let k_color_offset = 0u32;
         let k_offset_offset = 1u32;
-        let k_scale_offset = 0u32;
         
         let static_vertex_values_u8 = Uint8Array::new_with_length(static_vertex_buffer_size);
         let static_vertex_values_f32 = Float32Array::new(&static_vertex_values_u8.buffer());
@@ -277,7 +276,7 @@ impl Scene
 
             object_infos.push(rand(Some(0.2), Some(0.5)));
         }
-        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+        gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &static_vertex_buffer, 0, &static_vertex_values_f32,
         );
 
@@ -293,8 +292,8 @@ impl Scene
             VERTEX | COPY_DST,
         );
         vertex_buffer_descriptor.label("vertex buffer vertices");
-        let vertex_buffer = self.gpu_device.create_buffer(&vertex_buffer_descriptor);
-        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+        let vertex_buffer = gpu_device.create_buffer(&vertex_buffer_descriptor);
+        gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &vertex_buffer, 0, &vertex_data,
         );
 
@@ -302,12 +301,22 @@ impl Scene
             index_data.byte_length().into(),
             INDEX | COPY_DST,
         );
-        let index_buffer = self.gpu_device.create_buffer(&index_buffer_descriptor);
+        let index_buffer = gpu_device.create_buffer(&index_buffer_descriptor);
         index_buffer_descriptor.label("index buffer");
-        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+        gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &index_buffer, 0, &index_data,
         );
 
+        Scene 
+        {
+            gpu_device, context, vertex_buffer, static_vertex_buffer, changing_vertex_buffer, index_buffer,
+            render_pipeline, object_infos, changing_unit_size, changing_vertex_values, num_indexes, k_num_objects,
+        }
+    }
+
+
+    pub fn render(&self)
+    {
         let mut color_attachment = GpuRenderPassColorAttachment::new(
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
         );
@@ -320,33 +329,67 @@ impl Scene
         command_encoder.set_label("command encoder");
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
-        render_pass_encoder.set_pipeline(&render_pipeline);
-        render_pass_encoder.set_vertex_buffer(0, &vertex_buffer);
-        render_pass_encoder.set_vertex_buffer(1, &static_vertex_buffer);
-        render_pass_encoder.set_vertex_buffer(2, &changing_vertex_buffer);
-        render_pass_encoder.set_index_buffer(&index_buffer, GpuIndexFormat::Uint32);
+        render_pass_encoder.set_pipeline(&self.render_pipeline);
+        render_pass_encoder.set_vertex_buffer(0, &self.vertex_buffer);
+        render_pass_encoder.set_vertex_buffer(1, &self.static_vertex_buffer);
+        render_pass_encoder.set_vertex_buffer(2, &self.changing_vertex_buffer);
+        render_pass_encoder.set_index_buffer(&self.index_buffer, GpuIndexFormat::Uint32);
 
         let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
         let aspect = canvas.width() / canvas.height();
+        let k_scale_offset = 0u32;
 
-        for (ndx, scale) in object_infos.iter().enumerate()
+        for (ndx, scale) in self.object_infos.iter().enumerate()
         {
-            let offset = ndx as u32 * (changing_unit_size / 4);
+            let offset = ndx as u32 * (self.changing_unit_size / 4);
 
             let scale_vec = [scale / aspect as f32, *scale];
             let scale_array = Float32Array::new_with_length(scale_vec.len() as u32);
             scale_array.copy_from(&scale_vec);
-            changing_vertex_values.set(&scale_array, offset + k_scale_offset);   // set the scale
+            self.changing_vertex_values.set(&scale_array, offset + k_scale_offset);   // set the scale
         }
         self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
-            &changing_vertex_buffer, 0, &changing_vertex_values,
+            &self.changing_vertex_buffer, 0, &self.changing_vertex_values,
         );
 
-        render_pass_encoder.draw_indexed_with_instance_count(num_indexes, k_num_objects);
+        render_pass_encoder.draw_indexed_with_instance_count(self.num_indexes, self.k_num_objects);
 
         render_pass_encoder.end();
 
         let command_buffer = command_encoder.finish();
         self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
+
+        // function render() {
+        //     // Get the current texture from the canvas context and
+        //     // set it as the texture to render to.
+        //     renderPassDescriptor.colorAttachments[0].view =
+        //         context.getCurrentTexture().createView();
+        
+        //     const encoder = device.createCommandEncoder();
+        //     const pass = encoder.beginRenderPass(renderPassDescriptor);
+        //     pass.setPipeline(pipeline);
+        //     pass.setVertexBuffer(0, vertexBuffer);
+        //     pass.setVertexBuffer(1, staticVertexBuffer);
+        //     pass.setVertexBuffer(2, changingVertexBuffer);
+        //     pass.setIndexBuffer(indexBuffer, 'uint32');
+        
+        //     // Set the uniform values in our JavaScript side Float32Array
+        //     const aspect = canvas.width / canvas.height;
+        
+        //     // set the scales for each object
+        //     objectInfos.forEach(({scale}, ndx) => {
+        //       const offset = ndx * (changingUnitSize / 4);
+        //       vertexValues.set([scale / aspect, scale], offset + kScaleOffset); // set the scale
+        //     });
+        //     // upload all scales at once
+        //     device.queue.writeBuffer(changingVertexBuffer, 0, vertexValues);
+        
+        //     pass.drawIndexed(numVertices, kNumObjects);
+        
+        //     pass.end();
+        
+        //     const commandBuffer = encoder.finish();
+        //     device.queue.submit([commandBuffer]);
+        //   }
     }
 }
