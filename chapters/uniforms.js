@@ -20,7 +20,7 @@ export async function mainUniforms(canvas) {
         // 'reason' will be 'destroyed' if we intentionally destroy the device.
         if (info.reason !== 'destroyed') {
             // try again
-            mainUniforms();
+            mainUniforms(canvas);
         }
     });
 

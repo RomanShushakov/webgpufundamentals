@@ -20,7 +20,7 @@ export async function mainStorageBuffers(canvas) {
         // 'reason' will be 'destroyed' if we intentionally destroy the device.
         if (info.reason !== 'destroyed') {
             // try again
-            mainStorageBuffers();
+            mainStorageBuffers(canvas);
         }
     });
 
