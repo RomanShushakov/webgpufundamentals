@@ -1,11 +1,13 @@
-struct VertexShaderOutput {
+struct VertexShaderOutput 
+{
     @builtin(position) position: vec4f,
     @location(0) texcoord: vec2f,
 };
 
-struct Uniforms {
-  scale: vec2f,
-  offset: vec2f,
+struct Uniforms 
+{
+    scale: vec2f,
+    offset: vec2f,
 };
  
 @group(0) @binding(2) var<uniform> uni: Uniforms;

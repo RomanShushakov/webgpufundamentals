@@ -1,15 +1,19 @@
 import { initInterStageVariables } from "../wasm_modules_initialization/inter_stage_variables_init.js";
 
 
+function fail(msg) {
+    alert(msg);
+}
+
 export async function mainInterStageVariables(canvas) {
     if (!navigator.gpu) {
-        fail('this browser does not support WebGPU');
+        fail("this browser does not support WebGPU");
         return;
     }
 
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
-        fail('this browser supports webgpu but it appears disabled');
+        fail("this browser supports webgpu but it appears disabled");
         return;
     }
 
@@ -17,8 +21,8 @@ export async function mainInterStageVariables(canvas) {
     device.lost.then((info) => {
         console.error(`WebGPU device was lost: ${info.message}`);
 
-        // 'reason' will be 'destroyed' if we intentionally destroy the device.
-        if (info.reason !== 'destroyed') {
+        // 'reason' will be "destroyed" if we intentionally destroy the device.
+        if (info.reason !== "destroyed") {
             // try again
             mainInterStageVariables(canvas);
         }

@@ -7,7 +7,7 @@ use web_sys::
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuImageCopyTexture, GpuImageDataLayout, GpuExtent3dDict,
     GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuBufferDescriptor,
-    HtmlCanvasElement,
+    HtmlCanvasElement, GpuBufferBinding,
 };
 
 use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST};
@@ -48,18 +48,26 @@ impl Scene
 
     pub fn render(&self, ndx: usize, time: f32)
     {
-        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
+        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(
+            &include_str!("../shader/render.wgsl"),
+        );
         render_shader_module_descriptor.label("our hardcoded textured quad shaders");
-        let render_shader_module = self.gpu_device.create_shader_module(&render_shader_module_descriptor);
+        let render_shader_module = self.gpu_device.create_shader_module(
+            &render_shader_module_descriptor,
+        );
 
         let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
 
         let color_target_state = GpuColorTargetState::new(self.gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
-        let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
+        let fragment_state = GpuFragmentState::new(
+            "fragment_main", &render_shader_module, &fragment_state_targets,
+        );
 
         let render_layout = JsValue::from("auto");
-        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
+        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(
+            &render_layout, &vertex_state,
+        );
         render_pipeline_descriptor
             .label("hardcoded textured quad pipeline")
             .fragment(&fragment_state);
@@ -109,7 +117,7 @@ impl Scene
             2 * 4 + // scale is 2 32bit floats (4bytes each)
             2 * 4;  // offset is 2 32bit floats (4bytes each)
         let mut buffer_descriptor = GpuBufferDescriptor::new(
-            uniform_buffer_size as f64, UNIFORM | BUFFER_COPY_DST,
+            uniform_buffer_size.into(), UNIFORM | BUFFER_COPY_DST,
         );
         buffer_descriptor.label("uniforms for quad");
         let uniform_buffer = self.gpu_device.create_buffer(&buffer_descriptor);
@@ -122,21 +130,22 @@ impl Scene
         let k_offset_offset = 2;
 
         let mut bind_groups = Vec::new();
-        for i in 0..8
+        for i in 0..16
         {
             let mut sampler_descriptor = GpuSamplerDescriptor::new();
             sampler_descriptor
                 .address_mode_u(if (i & 1) == 1 { GpuAddressMode::Repeat } else { GpuAddressMode::ClampToEdge })
                 .address_mode_v(if (i & 2) == 2 { GpuAddressMode::Repeat } else { GpuAddressMode::ClampToEdge })
-                .mag_filter(if (i & 4) == 4 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest });
+                .mag_filter(if (i & 4) == 4 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest })
+                .min_filter(if (i & 8) == 8 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest });
             let sampler = self.gpu_device.create_sampler_with_descriptor(&sampler_descriptor);
 
             let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
             let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
-            let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &uniform_buffer);
+            let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &GpuBufferBinding::new(&uniform_buffer));
             let bind_group_0_entries = [
                 bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
-            ].iter().collect::<js_sys::Array>();
+            ].iter().collect::<Array>();
     
             let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
                 &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
@@ -144,7 +153,6 @@ impl Scene
             let bind_group_0 = self.gpu_device.create_bind_group(&bind_group_0_descriptor);
             bind_groups.push(bind_group_0);
         }
-
 
         // compute a scale that will draw our 0 to 1 clip space quad
         // 2x2 pixels in the canvas.

@@ -102,27 +102,27 @@ export class CustomApp extends HTMLElement {
 
     async renderChapter(selectedChapter) {
         switch (selectedChapter) {
-            case 'fundamentals':
+            case "fundamentals":
                 await mainFundamentals(this.state.canvas);
                 destroyTexturesGUI();
                 break;
-            case 'inter_stage_variables':
+            case "inter_stage_variables":
                 await mainInterStageVariables(this.state.canvas);
                 destroyTexturesGUI();
                 break;
-            case 'uniforms':
+            case "uniforms":
                 await mainUniforms(this.state.canvas);
                 destroyTexturesGUI();
                 break;
-            case 'storage_buffers':
+            case "storage_buffers":
                 await mainStorageBuffers(this.state.canvas);
                 destroyTexturesGUI();
                 break;
-            case 'vertex_buffers':
+            case "vertex_buffers":
                 await mainVertexBuffers(this.state.canvas);
                 destroyTexturesGUI();
                 break;
-            case 'textures':
+            case "textures":
                 await mainTextures(this.state.canvas);
                 break;
             default:

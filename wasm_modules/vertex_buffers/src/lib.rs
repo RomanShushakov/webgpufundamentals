@@ -358,38 +358,5 @@ impl Scene
 
         let command_buffer = command_encoder.finish();
         self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
-
-        // function render() {
-        //     // Get the current texture from the canvas context and
-        //     // set it as the texture to render to.
-        //     renderPassDescriptor.colorAttachments[0].view =
-        //         context.getCurrentTexture().createView();
-        
-        //     const encoder = device.createCommandEncoder();
-        //     const pass = encoder.beginRenderPass(renderPassDescriptor);
-        //     pass.setPipeline(pipeline);
-        //     pass.setVertexBuffer(0, vertexBuffer);
-        //     pass.setVertexBuffer(1, staticVertexBuffer);
-        //     pass.setVertexBuffer(2, changingVertexBuffer);
-        //     pass.setIndexBuffer(indexBuffer, 'uint32');
-        
-        //     // Set the uniform values in our JavaScript side Float32Array
-        //     const aspect = canvas.width / canvas.height;
-        
-        //     // set the scales for each object
-        //     objectInfos.forEach(({scale}, ndx) => {
-        //       const offset = ndx * (changingUnitSize / 4);
-        //       vertexValues.set([scale / aspect, scale], offset + kScaleOffset); // set the scale
-        //     });
-        //     // upload all scales at once
-        //     device.queue.writeBuffer(changingVertexBuffer, 0, vertexValues);
-        
-        //     pass.drawIndexed(numVertices, kNumObjects);
-        
-        //     pass.end();
-        
-        //     const commandBuffer = encoder.finish();
-        //     device.queue.submit([commandBuffer]);
-        //   }
     }
 }
