@@ -21,7 +21,7 @@ extern "C"
 {
     #[wasm_bindgen(js_namespace = console)]
     pub fn log(value: &str);
-}
+} 
 
 
 #[wasm_bindgen]
