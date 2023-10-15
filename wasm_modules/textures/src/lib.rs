@@ -1,17 +1,18 @@
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+use js_sys::{Float32Array, Array};
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue, JsCast};
 
 use web_sys::
 {
     GpuDevice, GpuCanvasContext, GpuTextureFormat, GpuShaderModuleDescriptor, GpuVertexState, GpuColorTargetState, 
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuImageCopyTexture, GpuImageDataLayout, GpuExtent3dDict,
-    GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode,
+    GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuBufferDescriptor,
+    HtmlCanvasElement,
 };
 
-use web_sys::gpu_texture_usage::
-{
-    TEXTURE_BINDING, COPY_DST,
-};
+use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST};
+
+use web_sys::gpu_buffer_usage::{UNIFORM, COPY_DST as BUFFER_COPY_DST};
 
 #[wasm_bindgen]
 extern "C"
@@ -45,7 +46,7 @@ impl Scene
     }
 
 
-    pub fn render(&self, ndx: usize)
+    pub fn render(&self, ndx: usize, time: f32)
     {
         let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
         render_shader_module_descriptor.label("our hardcoded textured quad shaders");
@@ -84,7 +85,7 @@ impl Scene
         let mut texture_descriptor = GpuTextureDescriptor::new(
             GpuTextureFormat::Rgba8unorm,
             &[k_texture_width, k_texture_height].iter().copied().map(JsValue::from).collect::<js_sys::Array>(),
-            TEXTURE_BINDING | COPY_DST,
+            TEXTURE_BINDING | TEXTURE_COPY_DST,
         );
         texture_descriptor.label("yellow F on red");
 
@@ -103,6 +104,23 @@ impl Scene
             &gpu_extent_3d_dict,
         );
 
+        // create a buffer for the uniform values
+        let uniform_buffer_size =
+            2 * 4 + // scale is 2 32bit floats (4bytes each)
+            2 * 4;  // offset is 2 32bit floats (4bytes each)
+        let mut buffer_descriptor = GpuBufferDescriptor::new(
+            uniform_buffer_size as f64, UNIFORM | BUFFER_COPY_DST,
+        );
+        buffer_descriptor.label("uniforms for quad");
+        let uniform_buffer = self.gpu_device.create_buffer(&buffer_descriptor);
+
+        // create a typedarray to hold the values for the uniforms in JavaScript
+        let uniform_values = Float32Array::new_with_length(uniform_buffer_size / 4);
+
+        // offsets to the various uniform values in float32 indices
+        let k_scale_offset = 0;
+        let k_offset_offset = 2;
+
         let mut bind_groups = Vec::new();
         for i in 0..8
         {
@@ -115,7 +133,10 @@ impl Scene
 
             let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
             let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
-            let bind_group_0_entries = [bind_group_0_entry_0, bind_group_0_entry_1].iter().collect::<js_sys::Array>();
+            let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &uniform_buffer);
+            let bind_group_0_entries = [
+                bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
+            ].iter().collect::<js_sys::Array>();
     
             let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
                 &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
@@ -123,6 +144,26 @@ impl Scene
             let bind_group_0 = self.gpu_device.create_bind_group(&bind_group_0_descriptor);
             bind_groups.push(bind_group_0);
         }
+
+
+        // compute a scale that will draw our 0 to 1 clip space quad
+        // 2x2 pixels in the canvas.
+        let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
+        let scale_x = 4 / canvas.width();
+        let scale_y = 4 / canvas.height();
+        uniform_values.set(
+            &[scale_x, scale_y].iter().copied().map(JsValue::from).collect::<Array>(), 
+            k_scale_offset,
+        );
+        uniform_values.set(
+            &[f32::sin(time - 0.25) * 0.8, -0.8].iter().copied().map(JsValue::from).collect::<Array>(), 
+            k_offset_offset,
+        );
+    
+        // copy the values from JavaScript to the GPU
+        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+            &uniform_buffer, 0, &uniform_values,
+        );
 
         let mut color_attachment = GpuRenderPassColorAttachment::new(
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
