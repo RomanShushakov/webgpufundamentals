@@ -47,23 +47,15 @@ impl Scene
 
     pub fn render(&self)
     {
-        let command_encoder = self.gpu_device.create_command_encoder();
-        command_encoder.set_label("Our command encoder");
+        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
+        render_shader_module_descriptor.label("our hardcoded textured quad shaders");
+        let render_shader_module = self.gpu_device.create_shader_module(&render_shader_module_descriptor);
 
-
-        let mut vert_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/vert.wgsl"));
-        vert_shader_module_descriptor.label("hardcoded triangle");
-        let vert_shader_module = self.gpu_device.create_shader_module(&vert_shader_module_descriptor);
-
-        let mut frag_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/frag.wgsl"));
-        frag_shader_module_descriptor.label("checkerboard");
-        let frag_shader_module = self.gpu_device.create_shader_module(&frag_shader_module_descriptor);
-
-        let vertex_state = GpuVertexState::new("vertex_main", &vert_shader_module);
+        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
 
         let color_target_state = GpuColorTargetState::new(self.gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
-        let fragment_state = GpuFragmentState::new("fragment_main", &frag_shader_module, &fragment_state_targets);
+        let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
 
         let render_layout = JsValue::from("auto");
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
@@ -88,11 +80,13 @@ impl Scene
                 r, r, r, r, r,
             ].into_iter().flatten().collect::<Vec<u8>>();
 
-        let texture_descriptor = GpuTextureDescriptor::new(
+        let mut texture_descriptor = GpuTextureDescriptor::new(
             GpuTextureFormat::Rgba8unorm,
             &[k_texture_width, k_texture_height].iter().copied().map(JsValue::from).collect::<js_sys::Array>(),
             TEXTURE_BINDING | COPY_DST,
         );
+        texture_descriptor.label("yellow F on red");
+
         let texture = self.gpu_device.create_texture(&texture_descriptor);
 
         let gpu_image_copy_texture = GpuImageCopyTexture::new(&texture);
@@ -127,12 +121,14 @@ impl Scene
         let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
         render_pass_descriptor.label("basic canvas render pass");
 
+        let command_encoder = self.gpu_device.create_command_encoder();
+        command_encoder.set_label("render quad encoder");
+
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
         render_pass_encoder.set_pipeline(&render_pipeline);
         render_pass_encoder.set_bind_group(0, &bind_group_0);
         render_pass_encoder.draw(6);
         render_pass_encoder.end();
-
 
         let command_buffer = command_encoder.finish();
         self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
