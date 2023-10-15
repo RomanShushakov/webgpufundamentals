@@ -30,5 +30,6 @@ fn vertex_main(@builtin(vertex_index) vertex_index : u32) -> VertexShaderOutput
 
 @fragment fn fragment_main(fs_input: VertexShaderOutput) -> @location(0) vec4f 
 {
-  return textureSample(our_texture, our_sampler, fs_input.texcoord);
+  let texcoord = vec2f(fs_input.texcoord.x, 1.0 - fs_input.texcoord.y); // flip texture coordinates
+  return textureSample(our_texture, our_sampler, texcoord);
 }
