@@ -67,12 +67,12 @@ export class CustomApp extends HTMLElement {
             <div class="select-chapters-container">
                 <label class="label" for="chapters">Choose a chapter:</label>
                 <select name="chapters" class="chapters">
-                    <option value="fundamentals">Fundamentals</option>
-                    <option value="inter_stage_variables">Inter-stage variables</option>
-                    <option value="uniforms">Uniforms</option>
-                    <option value="storage_buffers">Storage buffers</option>
-                    <option value="vertex_buffers">Vertex buffers</option>
                     <option value="textures">Textures</option>
+                    <option value="vertex_buffers">Vertex buffers</option>
+                    <option value="storage_buffers">Storage buffers</option>
+                    <option value="uniforms">Uniforms</option>
+                    <option value="inter_stage_variables">Inter-stage variables</option>
+                    <option value="fundamentals">Fundamentals</option>
                 </select>
             </div>
             <canvas class="canvas"></canvas>

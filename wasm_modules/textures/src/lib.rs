@@ -71,14 +71,14 @@ impl Scene
         let b = [0, 0, 255, 255];  // blue
 
         let texture_data = [
-                b, r, r, r, r,
-                r, y, y, y, r,
-                r, y, r, r, r,
-                r, y, y, r, r,
-                r, y, r, r, r,
-                r, y, r, r, r,
-                r, r, r, r, r,
-            ].into_iter().flatten().collect::<Vec<u8>>();
+            b, r, r, r, r,
+            r, y, y, y, r,
+            r, y, r, r, r,
+            r, y, y, r, r,
+            r, y, r, r, r,
+            r, y, r, r, r,
+            r, r, r, r, r,
+        ].into_iter().flatten().collect::<Vec<u8>>();
 
         let mut texture_descriptor = GpuTextureDescriptor::new(
             GpuTextureFormat::Rgba8unorm,
@@ -116,7 +116,7 @@ impl Scene
         let mut color_attachment = GpuRenderPassColorAttachment::new(
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
         );
-        color_attachment.clear_value(&GpuColorDict::new(1.0, 1.0, 0.0, 0.0));
+        color_attachment.clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
         let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
         let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
         render_pass_descriptor.label("basic canvas render pass");
