@@ -6,7 +6,7 @@ use web_sys::
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
     GpuRenderPassDescriptor, GpuBufferDescriptor, 
     GpuBindGroupDescriptor, GpuBindGroupEntry, GpuBufferBinding,
-    HtmlCanvasElement,
+    HtmlCanvasElement, GpuRenderPipeline, GpuBuffer, GpuBindGroup,
 
 };
 use web_sys::gpu_buffer_usage::{COPY_DST, UNIFORM};
@@ -29,7 +29,8 @@ pub struct Scene
 {
     gpu_device: GpuDevice,
     context: GpuCanvasContext,
-    gpu_texture_format: GpuTextureFormat,
+    object_infos: Vec<(f32, GpuBuffer, Float32Array, GpuBindGroup)>,
+    render_pipeline: GpuRenderPipeline,
 }
 
 
@@ -41,22 +42,13 @@ impl Scene
     ) 
         -> Self
     {
-        Scene 
-        {
-            gpu_device, context, gpu_texture_format,
-        }
-    }
-
-
-    pub fn render(&self)
-    {
         let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
         render_shader_module_descriptor.label("triangle shaders with uniforms");
-        let render_shader_module = self.gpu_device.create_shader_module(&render_shader_module_descriptor);
+        let render_shader_module = gpu_device.create_shader_module(&render_shader_module_descriptor);
 
         let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
 
-        let color_target_state = GpuColorTargetState::new(self.gpu_texture_format);
+        let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
 
@@ -64,7 +56,7 @@ impl Scene
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
         render_pipeline_descriptor.label("triangle with uniforms");
         render_pipeline_descriptor.fragment(&fragment_state);
-        let render_pipeline = self.gpu_device.create_render_pipeline(&render_pipeline_descriptor);
+        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
         let rand = |min: Option<f32>, max: Option<f32>| 
             {
@@ -84,7 +76,6 @@ impl Scene
 
         let k_color_offset = 0u32;
         let k_offset_offset = 4u32;
-        let k_scale_offset = 0u32;
 
         let k_num_objects = 100;
         let mut object_infos = Vec::new();
@@ -96,7 +87,7 @@ impl Scene
                 UNIFORM | COPY_DST,
             );
             static_uniform_buffer_descriptor.label(&format!("static uniforms for obj: {}", i));
-            let static_uniform_buffer = self.gpu_device.create_buffer(&static_uniform_buffer_descriptor);   
+            let static_uniform_buffer = gpu_device.create_buffer(&static_uniform_buffer_descriptor);   
 
             let static_uniform_values = Float32Array::new_with_length(static_uniform_buffer_size / 4);
 
@@ -111,7 +102,7 @@ impl Scene
             static_uniform_values.set(&offset_array, k_offset_offset);     // set the offset
 
             // copy these values to the GPU
-            self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+            gpu_device.queue().write_buffer_with_u32_and_buffer_source(
                 &static_uniform_buffer, 0, &static_uniform_values,
             );
 
@@ -121,7 +112,7 @@ impl Scene
                 UNIFORM | COPY_DST,
             );
             uniform_buffer_descriptor.label(&format!("uniforms for obj: {}", i));
-            let uniform_buffer = self.gpu_device.create_buffer(&uniform_buffer_descriptor);
+            let uniform_buffer = gpu_device.create_buffer(&uniform_buffer_descriptor);
 
             let uniform_values = Float32Array::new_with_length(uniform_buffer_size / 4);
 
@@ -136,11 +127,20 @@ impl Scene
                 &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
             );
             bind_group_0_descriptor.label(&format!("bind group 0 for obj: {}", i));
-            let bind_group_0 = self.gpu_device.create_bind_group(&bind_group_0_descriptor);
+            let bind_group_0 = gpu_device.create_bind_group(&bind_group_0_descriptor);
 
             object_infos.push((rand(Some(0.2), Some(0.5)), uniform_buffer, uniform_values, bind_group_0));
         } 
 
+        Scene 
+        {
+            gpu_device, context, object_infos, render_pipeline,
+        }
+    }
+
+
+    pub fn render(&self)
+    {
         let mut color_attachment = GpuRenderPassColorAttachment::new(
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
         );
@@ -153,14 +153,16 @@ impl Scene
         command_encoder.set_label("command encoder");
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
-        render_pass_encoder.set_pipeline(&render_pipeline);
+        render_pass_encoder.set_pipeline(&self.render_pipeline);
 
         let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
         let aspect = canvas.width() / canvas.height();
 
-        for (scale, uniform_buffer, uniform_values, bind_group_0) in object_infos 
+        let k_scale_offset = 0u32;
+
+        for (scale, uniform_buffer, uniform_values, bind_group_0) in self.object_infos.iter() 
         {
-            let scale = [scale / aspect as f32, scale];
+            let scale = [scale / aspect as f32, *scale];
             let scale_array = Float32Array::new_with_length(scale.len() as u32);
             scale_array.copy_from(&scale);
             uniform_values.set(&scale_array, k_scale_offset);       // set the scale
