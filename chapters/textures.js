@@ -8,18 +8,11 @@ const settings = {
     minFilter: "linear",
 };
 
-function findIndex(settings) {
-    return (settings.addressModeU === "repeat" ? 1 : 0) + 
-        (settings.addressModeV === "repeat" ? 2 : 0) +
-        (settings.magFilter === "linear" ? 4 : 0) +
-        (settings.minFilter === "linear" ? 8 : 0);
-}
+const addressOptions = ["repeat", "clamp-to-edge"];
+const filterOptions = ["nearest", "linear"];
 
 let gui;
 function addGUI() {
-    const addressOptions = ["repeat", "clamp-to-edge"];
-    const filterOptions = ["nearest", "linear"];
-
     gui = new dat.GUI();
     Object.assign(gui.domElement.style, { position: "absolute", left: "0", top: "2rem" });
 
@@ -36,6 +29,12 @@ function fail(msg) {
 export function destroyTexturesGUI() {
     gui?.destroy();
     gui = undefined;
+}
+
+let animation;
+
+export function cancelTexturesAnimation() {
+    cancelAnimationFrame(animation);
 }
 
 export async function mainTextures(canvas) {
@@ -83,10 +82,15 @@ export async function mainTextures(canvas) {
 
     function run(time) {
         time *= 0.001;
-        scene.render(findIndex(settings), time);
-        requestAnimationFrame(run);
+        const ndx = (settings.addressModeU === "repeat" ? 1 : 0) +
+            (settings.addressModeV === "repeat" ? 2 : 0) +
+            (settings.magFilter === "linear" ? 4 : 0) +
+            (settings.minFilter === "linear" ? 8 : 0);
+
+        scene.render(ndx, time);
+        animation = requestAnimationFrame(run);
     }
-    requestAnimationFrame(run);
+    animation = requestAnimationFrame(run);
 
     const observer = new ResizeObserver(entries => {
         for (const entry of entries) {
@@ -98,6 +102,4 @@ export async function mainTextures(canvas) {
         }
     });
     observer.observe(canvas);
-
-    // run();
 }

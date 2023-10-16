@@ -191,14 +191,9 @@ impl Scene
             &vertex_storage_buffer, 0, &vertex_data,
         );
 
-        let bind_group_0_entry_0_resource = GpuBufferBinding::new(&static_storage_buffer);
-        let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &bind_group_0_entry_0_resource);
-
-        let bind_group_0_entry_1_resource = GpuBufferBinding::new(&changing_storage_buffer);
-        let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &bind_group_0_entry_1_resource);
-
-        let bind_group_0_entry_2_resource = GpuBufferBinding::new(&vertex_storage_buffer);
-        let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &bind_group_0_entry_2_resource);
+        let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &GpuBufferBinding::new(&static_storage_buffer));
+        let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &GpuBufferBinding::new(&changing_storage_buffer));
+        let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &GpuBufferBinding::new(&vertex_storage_buffer));
     
         let bind_group_0_entries = [
             bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
