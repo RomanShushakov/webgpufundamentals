@@ -4,6 +4,7 @@ import { mainUniforms } from "./chapters/uniforms.js";
 import { mainStorageBuffers } from "./chapters/storage_buffers.js";
 import { mainVertexBuffers } from "./chapters/vertex_buffers.js";
 import { mainTextures, destroyTexturesGUI, cancelTexturesAnimation } from "./chapters/textures.js";
+import styleText from "./styles.scss?inline";
 
 
 export class CustomApp extends HTMLElement {
@@ -11,58 +12,19 @@ export class CustomApp extends HTMLElement {
         super();
         // element created
 
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(styleText);
+
         this.state = {
             canvas: null,
         };
 
         this.attachShadow({ mode: "open" });
 
+        this.shadowRoot.adoptedStyleSheets = [sheet];
         this.shadowRoot.innerHTML = 
         /*html*/
         `
-        <style>
-            :host {
-                margin: 0;
-                padding: 0;
-                display: flex;
-                width: 100%;
-                height: 100%;
-            }
-
-            .wrapper {
-                margin: 0;
-                padding: 0;
-                display: flex;
-                flex-direction: column;
-                width: 100%;
-                height: 100%;
-            }
-
-            .select-chapters-container {
-                margin: 0;
-                padding: 0;
-                display: flex;
-                flex-direction: row;
-                height: 2rem;
-                align-items: center;
-            }
-
-            .label {
-                margin: 0 2rem 0 2rem;
-                padding: 0;
-            }
-
-            .select {
-                margin: 0;
-                padding: 0;
-            }
-
-            .canvas {
-                display: flex;
-                width: 100%;
-                height: calc(100% - 2rem);
-            }
-        </style>
         <div class="wrapper">
             <div class="select-chapters-container">
                 <label class="label" for="chapters">Choose a chapter:</label>
