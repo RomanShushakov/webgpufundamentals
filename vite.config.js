@@ -1,3 +1,4 @@
+import { resolve } from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -8,5 +9,11 @@ export default defineConfig({
         outDir: "./public",
         assetsDir: "./assets",
         target: "esnext",
+        rollupOptions: {
+            input: {
+                "index": resolve(__dirname, "index.html"),
+                "custom-app": resolve(__dirname, "custom-app.html"),
+            },
+          },
     },
 });

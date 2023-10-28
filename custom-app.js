@@ -4,7 +4,7 @@ import { mainUniforms } from "./chapters/uniforms.js";
 import { mainStorageBuffers } from "./chapters/storage_buffers.js";
 import { mainVertexBuffers } from "./chapters/vertex_buffers.js";
 import { mainTextures, destroyTexturesGUI, cancelTexturesAnimation } from "./chapters/textures.js";
-import styleText from "./styles.scss?inline";
+import styleText from "./index.scss?inline";
 
 
 export class CustomApp extends HTMLElement {
@@ -12,34 +12,32 @@ export class CustomApp extends HTMLElement {
         super();
         // element created
 
-        const sheet = new CSSStyleSheet();
-        sheet.replaceSync(styleText);
+        this.attachShadow({ mode: "open" });
 
         this.state = {
             canvas: null,
         };
+    }
 
-        this.attachShadow({ mode: "open" });
+    async connectedCallback() {
+        // browser calls this method when the element is added to the document
+        // (can be called many times if an element is repeatedly added/removed)
 
+        // Get the source HTML to load
+        let templatePath = this.getAttribute("template-path");
+        if (!templatePath) return;
+
+        // Get the page
+        let request = await fetch(templatePath);
+        if (!request.ok) return;
+
+        // Get the HTML
+        this.shadowRoot.innerHTML = await request.text();
+
+        // Import styles
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(styleText);
         this.shadowRoot.adoptedStyleSheets = [sheet];
-        this.shadowRoot.innerHTML = 
-        /*html*/
-        `
-        <div class="wrapper">
-            <div class="select-chapters-container">
-                <label class="label" for="chapters">Choose a chapter:</label>
-                <select name="chapters" class="chapters">
-                    <option value="textures">Textures</option>
-                    <option value="vertex_buffers">Vertex buffers</option>
-                    <option value="storage_buffers">Storage buffers</option>
-                    <option value="uniforms">Uniforms</option>
-                    <option value="inter_stage_variables">Inter-stage variables</option>
-                    <option value="fundamentals">Fundamentals</option>
-                </select>
-            </div>
-            <canvas class="canvas"></canvas>
-        </div>
-        `;
 
         this.state.canvas = this.shadowRoot.querySelector(".canvas");
 
@@ -48,17 +46,8 @@ export class CustomApp extends HTMLElement {
             chapterSelector.addEventListener("change", (event) => {
                 this.renderChapter(event.target.value);
             });
+            this.renderChapter(chapterSelector.value);
 
-        }
-    }
-
-    connectedCallback() {
-        // browser calls this method when the element is added to the document
-        // (can be called many times if an element is repeatedly added/removed)
-
-        const selectedChapter = this.shadowRoot.querySelector(".chapters")?.value;
-        if (selectedChapter) {
-            this.renderChapter(selectedChapter);
         }
     }
 
