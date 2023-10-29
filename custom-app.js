@@ -47,7 +47,6 @@ export class CustomApp extends HTMLElement {
                 this.renderChapter(event.target.value);
             });
             this.renderChapter(chapterSelector.value);
-
         }
     }
 
