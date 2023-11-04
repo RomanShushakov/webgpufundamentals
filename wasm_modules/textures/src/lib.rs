@@ -191,7 +191,7 @@ impl Scene
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
         render_pass_encoder.set_pipeline(&self.render_pipeline);
-        render_pass_encoder.set_bind_group(0, bind_group);
+        render_pass_encoder.set_bind_group(0, Some(bind_group));
         render_pass_encoder.draw(6);
         render_pass_encoder.end();
 

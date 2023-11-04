@@ -330,9 +330,9 @@ impl Scene
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
         render_pass_encoder.set_pipeline(&self.render_pipeline);
-        render_pass_encoder.set_vertex_buffer(0, &self.vertex_buffer);
-        render_pass_encoder.set_vertex_buffer(1, &self.static_vertex_buffer);
-        render_pass_encoder.set_vertex_buffer(2, &self.changing_vertex_buffer);
+        render_pass_encoder.set_vertex_buffer(0, Some(&self.vertex_buffer));
+        render_pass_encoder.set_vertex_buffer(1, Some(&self.static_vertex_buffer));
+        render_pass_encoder.set_vertex_buffer(2, Some(&self.changing_vertex_buffer));
         render_pass_encoder.set_index_buffer(&self.index_buffer, GpuIndexFormat::Uint32);
 
         let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();

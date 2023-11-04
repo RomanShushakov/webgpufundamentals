@@ -169,7 +169,7 @@ impl Scene
 
             self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(&uniform_buffer, 0, &uniform_values);
 
-            render_pass_encoder.set_bind_group(0, &bind_group_0);
+            render_pass_encoder.set_bind_group(0, Some(&bind_group_0));
             render_pass_encoder.draw(3);
         }
 

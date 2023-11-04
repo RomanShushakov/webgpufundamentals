@@ -247,7 +247,7 @@ impl Scene
         }
         self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(&self.changing_storage_buffer, 0, &storage_values);
 
-        render_pass_encoder.set_bind_group(0, &self.bind_group_0);
+        render_pass_encoder.set_bind_group(0, Some(&self.bind_group_0));
         render_pass_encoder.draw_with_instance_count(self.num_vertices, self.k_num_objects);
 
         render_pass_encoder.end();

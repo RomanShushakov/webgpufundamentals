@@ -138,7 +138,7 @@ impl Scene
         compute_pass_descriptor.label("Doubling compute pass");
         let compute_pass = command_encoder.begin_compute_pass_with_descriptor(&compute_pass_descriptor);
         compute_pass.set_pipeline(&compute_pipeline);
-        compute_pass.set_bind_group(0, &bind_group);
+        compute_pass.set_bind_group(0, Some(&bind_group));
         compute_pass.dispatch_workgroups(input_array.length());
         compute_pass.end();
 
