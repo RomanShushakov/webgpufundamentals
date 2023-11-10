@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use js_sys::{Float32Array, Array, Uint8Array};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue, JsCast};
 
@@ -7,7 +9,7 @@ use web_sys::
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuImageCopyTexture, GpuImageDataLayout, GpuExtent3dDict,
     GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuBufferDescriptor,
-    HtmlCanvasElement, GpuBufferBinding, GpuRenderPipeline, GpuBuffer, GpuBindGroup,
+    HtmlCanvasElement, GpuBufferBinding, GpuRenderPipeline, GpuBuffer, GpuBindGroup, ContextAttributes2d, ImageData,
 };
 
 use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST};
@@ -42,12 +44,62 @@ fn bilinear_filter(tl: &[f32], tr: &[f32], bl: &[f32], br: &[f32], t1: f32, t2: 
 }
 
 
+trait MipTrait
+{
+    fn data(&self) -> Vec<u8>;
+    fn width(&self) -> f32;
+    fn height(&self) -> f32;
+}
+
+
 #[derive(Clone)]
 struct Mip
 {
     data: Uint8Array,
     width: f32,
     height: f32,
+}
+
+
+impl MipTrait for Mip
+{
+    fn data(&self) -> Vec<u8> 
+    {
+        self.data.to_vec().clone()
+    }
+
+
+    fn width(&self) -> f32
+    {
+        self.width
+    }
+
+
+    fn height(&self) -> f32 
+    {
+        self.height
+    }
+}
+
+
+impl MipTrait for ImageData
+{
+    fn data(&self) -> Vec<u8> 
+    {
+        self.data().deref().clone()
+    }
+
+
+    fn width(&self) -> f32 
+    {
+        self.width() as f32
+    }
+
+
+    fn height(&self) -> f32 
+    {
+        self.height() as f32
+    }
 }
 
 
@@ -110,7 +162,7 @@ fn create_next_mip_level_rgba8_unorm(mip: Mip) -> Mip
 }
 
 
-fn generate_mips(src: &[u8], src_width: f32) -> Vec<Mip>
+fn generate_mips(src: &[u8], src_width: f32) -> Vec<Box<dyn MipTrait>>
 {
     let src_height = src.len() as f32 / 4.0 / src_width; // const srcHeight = src.length / 4 / srcWidth;
 
@@ -120,15 +172,85 @@ fn generate_mips(src: &[u8], src_width: f32) -> Vec<Mip>
 
     // populate with first mip level (base level)
     let mut mip = Mip { data: transformed_src, width: src_width, height: src_height };  // let mip = { data: src, width: srcWidth, height: srcHeight, };
-    let mut mips = vec![mip.clone()];   // const mips = [mip];
+    let mut mips: Vec<Box<dyn MipTrait>> = vec![Box::new(mip.clone())];   // const mips = [mip];
 
     while mip.width > 1.0 || mip.height > 1.0  // while (mip.width > 1 || mip.height > 1) {
     {
         mip = create_next_mip_level_rgba8_unorm(mip); // mip = createNextMipLevelRgba8Unorm(mip);
-        mips.push(mip.clone()); // mips.push(mip);
+        mips.push(Box::new(mip.clone())); // mips.push(mip);
     }
 
     mips
+}
+
+
+fn create_blended_mipmap() -> Vec<Box<dyn MipTrait>> 
+{
+    let w = [255, 255, 255, 255];
+    let r = [255, 0, 0, 255];
+    let b = [0, 28, 116, 255];
+    let y = [255, 231, 0, 255];
+    let g = [58, 181, 75, 255];
+    let a = [38, 123, 167, 255];
+    let data = [
+        w, r, r, r, r, r, r, a, a, r, r, r, r, r, r, w,
+        w, w, r, r, r, r, r, a, a, r, r, r, r, r, w, w,
+        w, w, w, r, r, r, r, a, a, r, r, r, r, w, w, w,
+        w, w, w, w, r, r, r, a, a, r, r, r, w, w, w, w,
+        w, w, w, w, w, r, r, a, a, r, r, w, w, w, w, w,
+        w, w, w, w, w, w, r, a, a, r, w, w, w, w, w, w,
+        w, w, w, w, w, w, w, a, a, w, w, w, w, w, w, w,
+        b, b, b, b, b, b, b, b, a, y, y, y, y, y, y, y,
+        b, b, b, b, b, b, b, g, y, y, y, y, y, y, y, y,
+        w, w, w, w, w, w, w, g, g, w, w, w, w, w, w, w,
+        w, w, w, w, w, w, r, g, g, r, w, w, w, w, w, w,
+        w, w, w, w, w, r, r, g, g, r, r, w, w, w, w, w,
+        w, w, w, w, r, r, r, g, g, r, r, r, w, w, w, w,
+        w, w, w, r, r, r, r, g, g, r, r, r, r, w, w, w,
+        w, w, r, r, r, r, r, g, g, r, r, r, r, r, w, w,
+        w, r, r, r, r, r, r, g, g, r, r, r, r, r, r, w,
+    ].into_iter().flatten().collect::<Vec<u8>>();
+    generate_mips(&data, 16.0)
+}
+
+
+fn create_checked_mipmap() -> Vec<Box<dyn MipTrait>>
+{
+    let document = web_sys::window().unwrap().document().unwrap();
+    let mut context_options = ContextAttributes2d::new();
+    context_options.will_read_frequently(true);
+    let ctx = document
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<HtmlCanvasElement>()
+        .unwrap()
+        .get_context_with_context_options("2d", &context_options.into())
+        .unwrap()
+        .unwrap()
+        .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        .unwrap();
+
+    let levels = [
+        (64, "rgb(128,0,255)"),
+        (32, "rgb(0,255,0)"),
+        (16, "rgb(255,0,0)"),
+        (8, "rgb(255,255,0)"),
+        (4, "rgb(0,0,255)"),
+        (2, "rgb(0,255,255)"),
+        (1, "rgb(255,0,255)"),
+    ];
+
+    levels.into_iter().enumerate().map(|(i, (size, color))| 
+        {
+            ctx.canvas().unwrap().set_width(size);
+            ctx.canvas().unwrap().set_height(size);
+            ctx.set_fill_style(&JsValue::from(if (i & 1) == 1 { "#000" } else { "#fff" }));
+            ctx.fill_rect(0.0, 0.0, size as f64, size as f64);
+            ctx.set_fill_style(&JsValue::from(color));
+            ctx.fill_rect(0.0, 0.0, size as f64 / 2.0, size as f64 / 2.0);
+            ctx.fill_rect(size as f64 / 2.0, size as f64 / 2.0, size as f64 / 2.0, size as f64 / 2.0);
+            Box::new(ctx.get_image_data(0.0, 0.0, size as f64, size as f64).unwrap()) as Box<dyn MipTrait>
+        }).collect::<Vec<Box<dyn MipTrait>>>()
 }
 
 
@@ -177,51 +299,42 @@ impl Scene
             .fragment(&fragment_state);
         let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
-        let k_texture_width = 5;
-        let k_texture_height = 7;
-
-        let r = [255, 0, 0, 255];  // red
-        let y = [255, 255, 0, 255];  // yellow
-        let b = [0, 0, 255, 255];  // blue
-
-        let texture_data = [
-            b, r, r, r, r,
-            r, y, y, y, r,
-            r, y, r, r, r,
-            r, y, y, r, r,
-            r, y, r, r, r,
-            r, y, r, r, r,
-            r, r, r, r, r,
-        ].into_iter().flatten().collect::<Vec<u8>>();
-
-        let mips = generate_mips(&texture_data, k_texture_width as f32);
-
-        let mut texture_descriptor = GpuTextureDescriptor::new(
-            GpuTextureFormat::Rgba8unorm,
-            &[mips[0].width, mips[0].height].iter().copied().map(JsValue::from).collect::<js_sys::Array>(),
-            TEXTURE_BINDING | TEXTURE_COPY_DST,
-        );
-        texture_descriptor.label("yellow F on red");
-        texture_descriptor.mip_level_count(mips.len() as u32);
-
-        let texture = gpu_device.create_texture(&texture_descriptor);
-
-        mips.iter().enumerate().for_each(|(mip_level, m)| 
+        let create_texture_with_mips = |mips: Vec<Box<dyn MipTrait>>, label: &str| 
             {
-                let mut gpu_image_copy_texture = GpuImageCopyTexture::new(&texture);
-                gpu_image_copy_texture.mip_level(mip_level as u32);
-                let mut gpu_image_data_layout = GpuImageDataLayout::new();
-                gpu_image_data_layout.bytes_per_row(m.width as u32 * 4);
-                let mut gpu_extent_3d_dict = GpuExtent3dDict::new(m.width as u32);
-                gpu_extent_3d_dict.height(m.height as u32);
-
-                gpu_device.queue().write_texture_with_u8_array_and_gpu_extent_3d_dict(
-                    &gpu_image_copy_texture, 
-                    &m.data.to_vec(), 
-                    &gpu_image_data_layout, 
-                    &gpu_extent_3d_dict,
+                let mut texture_descriptor = GpuTextureDescriptor::new(
+                    GpuTextureFormat::Rgba8unorm,
+                    &[mips[0].width(), mips[0].height()].iter().copied().map(JsValue::from).collect::<js_sys::Array>(),
+                    TEXTURE_BINDING | TEXTURE_COPY_DST,
                 );
-            });
+                texture_descriptor.label(label);
+                texture_descriptor.mip_level_count(mips.len() as u32);
+
+                let texture = gpu_device.create_texture(&texture_descriptor);
+
+                mips.iter().enumerate().for_each(|(mip_level, m)| 
+                {
+                    let mut gpu_image_copy_texture = GpuImageCopyTexture::new(&texture);
+                    gpu_image_copy_texture.mip_level(mip_level as u32);
+                    let mut gpu_image_data_layout = GpuImageDataLayout::new();
+                    gpu_image_data_layout.bytes_per_row(m.width() as u32 * 4);
+                    let mut gpu_extent_3d_dict = GpuExtent3dDict::new(m.width() as u32);
+                    gpu_extent_3d_dict.height(m.height() as u32);
+
+                    gpu_device.queue().write_texture_with_u8_array_and_gpu_extent_3d_dict(
+                        &gpu_image_copy_texture, 
+                        &m.data(), 
+                        &gpu_image_data_layout, 
+                        &gpu_extent_3d_dict,
+                    );
+                });
+
+                texture
+            };
+
+        let textures = [
+            create_texture_with_mips(create_blended_mipmap(), "blended"),
+            create_texture_with_mips(create_checked_mipmap(), "checker"),
+        ];
 
         // create a buffer for the uniform values
         let uniform_buffer_size =
@@ -248,7 +361,7 @@ impl Scene
             let sampler = gpu_device.create_sampler_with_descriptor(&sampler_descriptor);
 
             let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
-            let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
+            let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &textures[0].create_view());
             let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &GpuBufferBinding::new(&uniform_buffer));
             let bind_group_0_entries = [
                 bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,

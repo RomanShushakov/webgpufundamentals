@@ -63,6 +63,11 @@ web-sys = { version = "0.3.65", features = [
     "GpuAddressMode",
     "GpuFilterMode",
     "HtmlCanvasElement",
+    "Window",
+    "Document",
+    "ContextAttributes2d",
+    "CanvasRenderingContext2d",
+    "ImageData",
 ] }
 
 js-sys = "0.3.65"
