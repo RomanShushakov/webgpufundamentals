@@ -110,12 +110,16 @@ fn create_next_mip_level_rgba8_unorm(mip: Mip) -> Mip
 }
 
 
-fn generate_mips(src: Uint8Array, src_width: f32) -> Vec<Mip>
+fn generate_mips(src: &[u8], src_width: f32) -> Vec<Mip>
 {
-    let src_height = src.length() as f32 / 4.0 / src_width; // const srcHeight = src.length / 4 / srcWidth;
+    let src_height = src.len() as f32 / 4.0 / src_width; // const srcHeight = src.length / 4 / srcWidth;
+
+    let transformed_src = Uint8Array::new(
+        &src.iter().copied().map(JsValue::from).collect::<Array>(),
+    );
 
     // populate with first mip level (base level)
-    let mut mip = Mip { data: src, width: src_width, height: src_height };  // let mip = { data: src, width: srcWidth, height: srcHeight, };
+    let mut mip = Mip { data: transformed_src, width: src_width, height: src_height };  // let mip = { data: src, width: srcWidth, height: srcHeight, };
     let mut mips = vec![mip.clone()];   // const mips = [mip];
 
     while mip.width > 1.0 || mip.height > 1.0  // while (mip.width > 1 || mip.height > 1) {
@@ -190,27 +194,34 @@ impl Scene
             r, r, r, r, r,
         ].into_iter().flatten().collect::<Vec<u8>>();
 
+        let mips = generate_mips(&texture_data, k_texture_width as f32);
+
         let mut texture_descriptor = GpuTextureDescriptor::new(
             GpuTextureFormat::Rgba8unorm,
-            &[k_texture_width, k_texture_height].iter().copied().map(JsValue::from).collect::<js_sys::Array>(),
+            &[mips[0].width, mips[0].height].iter().copied().map(JsValue::from).collect::<js_sys::Array>(),
             TEXTURE_BINDING | TEXTURE_COPY_DST,
         );
         texture_descriptor.label("yellow F on red");
+        texture_descriptor.mip_level_count(mips.len() as u32);
 
         let texture = gpu_device.create_texture(&texture_descriptor);
 
-        let gpu_image_copy_texture = GpuImageCopyTexture::new(&texture);
-        let mut gpu_image_data_layout = GpuImageDataLayout::new();
-        gpu_image_data_layout.bytes_per_row(k_texture_width * 4);
-        let mut gpu_extent_3d_dict = GpuExtent3dDict::new(k_texture_width);
-        gpu_extent_3d_dict.height(k_texture_height);
+        mips.iter().enumerate().for_each(|(mip_level, m)| 
+            {
+                let mut gpu_image_copy_texture = GpuImageCopyTexture::new(&texture);
+                gpu_image_copy_texture.mip_level(mip_level as u32);
+                let mut gpu_image_data_layout = GpuImageDataLayout::new();
+                gpu_image_data_layout.bytes_per_row(m.width as u32 * 4);
+                let mut gpu_extent_3d_dict = GpuExtent3dDict::new(m.width as u32);
+                gpu_extent_3d_dict.height(m.height as u32);
 
-        gpu_device.queue().write_texture_with_u8_array_and_gpu_extent_3d_dict(
-            &gpu_image_copy_texture, 
-            &texture_data, 
-            &gpu_image_data_layout, 
-            &gpu_extent_3d_dict,
-        );
+                gpu_device.queue().write_texture_with_u8_array_and_gpu_extent_3d_dict(
+                    &gpu_image_copy_texture, 
+                    &m.data.to_vec(), 
+                    &gpu_image_data_layout, 
+                    &gpu_extent_3d_dict,
+                );
+            });
 
         // create a buffer for the uniform values
         let uniform_buffer_size =
@@ -257,7 +268,7 @@ impl Scene
     }
 
 
-    pub fn render(&mut self, ndx: usize, time: f32)
+    pub fn render(&mut self, ndx: usize, time: f32, scale: f32)
     {
         let bind_group = &self.bind_groups[ndx];
 
@@ -268,8 +279,8 @@ impl Scene
         // compute a scale that will draw our 0 to 1 clip space quad
         // 2x2 pixels in the canvas.
         let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
-        let scale_x = 4.0 / canvas.width() as f32;
-        let scale_y = 4.0 / canvas.height() as f32;
+        let scale_x = 4.0 / canvas.width() as f32 * scale;
+        let scale_y = 4.0 / canvas.height() as f32 * scale;
 
         self.uniform_values.set(
             &[scale_x, scale_y].iter().copied().map(JsValue::from).collect::<Array>(), 

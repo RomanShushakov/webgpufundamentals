@@ -6,6 +6,7 @@ const settings = {
     addressModeV: "repeat",
     magFilter: "linear",
     minFilter: "linear",
+    scale: 1,
 };
 
 const addressOptions = ["repeat", "clamp-to-edge"];
@@ -20,6 +21,7 @@ function addGUI() {
     gui.add(settings, "addressModeV", addressOptions);
     gui.add(settings, "magFilter", filterOptions);
     gui.add(settings, "minFilter", filterOptions);
+    gui.add(settings, "scale", 0.5, 6);
 }
 
 function fail(msg) {
@@ -87,7 +89,7 @@ export async function mainTextures(canvas) {
             (settings.magFilter === "linear" ? 4 : 0) +
             (settings.minFilter === "linear" ? 8 : 0);
 
-        scene.render(ndx, time);
+        scene.render(ndx, time, settings.scale);
         animation = requestAnimationFrame(run);
     }
     animation = requestAnimationFrame(run);
