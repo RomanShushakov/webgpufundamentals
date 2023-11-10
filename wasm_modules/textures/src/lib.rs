@@ -1,4 +1,4 @@
-use js_sys::{Float32Array, Array};
+use js_sys::{Float32Array, Array, Uint8Array};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue, JsCast};
 
 use web_sys::
@@ -22,6 +22,112 @@ extern "C"
 }
 
 
+fn lerp(a: f32, b: f32, t: f32) -> f32
+{
+    a + (b - a) * t
+}
+
+
+fn mix(a: &[f32], b: &[f32], t: f32) -> Vec<f32>
+{
+    a.iter().enumerate().map(|(i, v)| lerp(*v, b[i], t)).collect::<Vec<f32>>()
+}
+
+
+fn bilinear_filter(tl: &[f32], tr: &[f32], bl: &[f32], br: &[f32], t1: f32, t2: f32) -> Vec<f32> 
+{
+    let t = mix(tl, tr, t1);
+    let b = mix(bl, br, t1);
+    mix(&t, &b, t2)
+}
+
+
+#[derive(Clone)]
+struct Mip
+{
+    data: Uint8Array,
+    width: f32,
+    height: f32,
+}
+
+
+fn create_next_mip_level_rgba8_unorm(mip: Mip) -> Mip
+{
+    // compute the size of the next mip
+    let dst_width = 1f32.max((mip.width / 2.0).floor());    // const dstWidth = Math.max(1, srcWidth / 2 | 0);
+    let dst_height = 1f32.max((mip.height / 2.0).floor());  // const dstHeight = Math.max(1, srcHeight / 2 | 0);
+    let dst = Uint8Array::new_with_length((dst_width * dst_height * 4.0) as u32);   // const dst = new Uint8Array(dstWidth * dstHeight * 4);
+
+    let get_src_pixel = |x: f32, y: f32| 
+        {
+            let offset = ((y * mip.width + x) * 4.0) as u32;    // const offset = (y * srcWidth + x) * 4;
+            mip.data.subarray(offset, offset + 4)   // return src.subarray(offset, offset + 4);
+        };
+    
+    for y in 0..dst_height as usize // for (let y = 0; y < dstHeight; ++y) {
+    {
+        for x in 0..dst_width as usize  // for (let x = 0; x < dstWidth; ++x) {
+        {
+            // compute texcoord of the center of the destination texel
+            let u = (x as f32 + 0.5) / dst_width;   // const u = (x + 0.5) / dstWidth;
+            let v = (y as f32 + 0.5) / dst_height;   // const v = (y + 0.5) / dstHeight;
+
+            // compute the same texcoord in the source - 0.5 a pixel
+            let au = u * mip.width - 0.5;   // const au = (u * srcWidth - 0.5);
+            let av = v * mip.height - 0.5;  // const av = (v * srcHeight - 0.5);
+
+            // compute the src top left texel coord (not texcoord)
+            let tx = au.floor();    // const tx = au | 0;
+            let ty = av.floor();    // const ty = av | 0;
+
+            // compute the mix amounts between pixels
+            let t1 = au.fract();    // const t1 = au % 1;
+            let t2 = av.fract(); // const t2 = av % 1;
+
+            // get the 4 pixels
+            let tl = get_src_pixel(tx, ty); // const tl = getSrcPixel(tx, ty);
+            let tr = get_src_pixel(tx + 1.0, ty);   // const tr = getSrcPixel(tx + 1, ty);
+            let bl = get_src_pixel(tx, ty + 1.0);   // const bl = getSrcPixel(tx, ty + 1);
+            let br = get_src_pixel(tx + 1.0, ty + 1.0); // const br = getSrcPixel(tx + 1, ty + 1);
+
+            // copy the "sampled" result into the dest.
+            let dst_offset = (y as f32 * dst_width + x as f32) * 4.0; // const dstOffset = (y * dstWidth + x) * 4;
+            dst.set(
+                &bilinear_filter(
+                    &tl.to_vec().iter().copied().map(|v| v as f32).collect::<Vec<f32>>(),
+                    &tr.to_vec().iter().copied().map(|v| v as f32).collect::<Vec<f32>>(), 
+                    &bl.to_vec().iter().copied().map(|v| v as f32).collect::<Vec<f32>>(), 
+                    &br.to_vec().iter().copied().map(|v| v as f32).collect::<Vec<f32>>(), 
+                    t1, 
+                    t2,
+                ).iter().copied().map(|v| JsValue::from(v as u8)).collect::<Array>(), 
+                dst_offset as u32,
+            );  // dst.set(bilinearFilter(tl, tr, bl, br, t1, t2), dstOffset);
+        }
+    }
+
+    Mip { data: dst, width: dst_width, height: dst_height }  // return { data: dst, width: dstWidth, height: dstHeight };
+}
+
+
+fn generate_mips(src: Uint8Array, src_width: f32) -> Vec<Mip>
+{
+    let src_height = src.length() as f32 / 4.0 / src_width; // const srcHeight = src.length / 4 / srcWidth;
+
+    // populate with first mip level (base level)
+    let mut mip = Mip { data: src, width: src_width, height: src_height };  // let mip = { data: src, width: srcWidth, height: srcHeight, };
+    let mut mips = vec![mip.clone()];   // const mips = [mip];
+
+    while mip.width > 1.0 || mip.height > 1.0  // while (mip.width > 1 || mip.height > 1) {
+    {
+        mip = create_next_mip_level_rgba8_unorm(mip); // mip = createNextMipLevelRgba8Unorm(mip);
+        mips.push(mip.clone()); // mips.push(mip);
+    }
+
+    mips
+}
+
+
 #[wasm_bindgen]
 pub struct Scene 
 {
@@ -32,6 +138,7 @@ pub struct Scene
     uniform_values: Float32Array,
     render_pipeline: GpuRenderPipeline,
 }
+
 
 #[wasm_bindgen]
 impl Scene
