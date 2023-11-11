@@ -1,11 +1,11 @@
-import { initInterStageVariables } from "../wasm_modules_initialization/inter_stage_variables_init.js";
+import { initTextures } from "../wasm_modules_initialization/textures_init.js";
 
 
 function fail(msg) {
     alert(msg);
 }
 
-export async function mainInterStageVariables(canvas) {
+export async function mainTextures(canvas) {
     if (!navigator.gpu) {
         fail("this browser does not support WebGPU");
         return;
@@ -21,10 +21,10 @@ export async function mainInterStageVariables(canvas) {
     device.lost.then((info) => {
         console.error(`WebGPU device was lost: ${info.message}`);
 
-        // 'reason' will be "destroyed" if we intentionally destroy the device.
+        // "reason" will be "destroyed" if we intentionally destroy the device.
         if (info.reason !== "destroyed") {
             // try again
-            mainInterStageVariables(canvas);
+            mainTextures(canvas);
         }
     });
 
@@ -33,6 +33,9 @@ export async function mainInterStageVariables(canvas) {
         return;
     }
 
+    canvas.style.imageRendering = "pixelated";
+    canvas.style.imageRendering = "crisp-edges";
+    
     const context = canvas.getContext("webgpu");
 
     const gpuTextureFormat = navigator.gpu.getPreferredCanvasFormat();
@@ -41,18 +44,24 @@ export async function mainInterStageVariables(canvas) {
         format: gpuTextureFormat,
     });
 
-    const scene = await initInterStageVariables(device, context, gpuTextureFormat);
+    const scene = await initTextures(device, context, gpuTextureFormat);
+
+    let texNdx = 0;
 
     const observer = new ResizeObserver(entries => {
         for (const entry of entries) {
             const canvas = entry.target;
             const width = entry.contentBoxSize[0].inlineSize;
             const height = entry.contentBoxSize[0].blockSize;
-            canvas.width = Math.min(width, device.limits.maxTextureDimension2D);
-            canvas.height = Math.min(height, device.limits.maxTextureDimension2D);
-            // re-render
-            scene.render();
+            canvas.width = Math.max(1, Math.min(width, device.limits.maxTextureDimension2D));
+            canvas.height = Math.max(1, Math.min(height, device.limits.maxTextureDimension2D));
+            scene.render(texNdx);
         }
-    });
+      });
     observer.observe(canvas);
+
+    canvas.addEventListener("click", () => {
+        texNdx = (texNdx + 1) % 2;
+        scene.render(texNdx);
+    });
 }

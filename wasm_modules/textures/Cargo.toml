@@ -1,5 +1,5 @@
 [package]
-name = "fundamentals"
+name = "textures"
 version = "0.1.0"
 authors = ["roman shushakov <roman.a.shushakov1@gmail.com>"]
 edition = "2021"
@@ -15,8 +15,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wasm-bindgen = "0.2.88"
-
-wasm-bindgen-futures = "0.4.38"
 
 web-sys = { version = "0.3.65", features = [
     "GpuDevice",
@@ -41,20 +39,42 @@ web-sys = { version = "0.3.65", features = [
     "GpuRenderPassEncoder",
     "GpuCommandBuffer",
     "GpuQueue",
-    "GpuComputePipelineDescriptor",
-    "GpuComputePipeline",
-    "GpuProgrammableStage",
     "GpuBufferDescriptor",
     "GpuBuffer",
-    "GpuBindGroupDescriptor",
-    "GpuBindGroup",
-    "GpuBindGroupLayout",
-    "GpuBindGroupEntry",
-    "GpuBufferBinding",
-    "GpuComputePassDescriptor",
-    "GpuComputePassEncoder",
     "gpu_buffer_usage",
-    "gpu_map_mode",
+    "HtmlCanvasElement",
+    "GpuVertexBufferLayout",
+    "GpuVertexAttribute",
+    "GpuVertexFormat",
+    "GpuVertexStepMode",
+    "GpuIndexFormat",
+    "GpuTextureDescriptor",
+    "gpu_texture_usage",
+    "GpuImageCopyTexture",
+    "GpuImageDataLayout",
+    "GpuExtent3dDict",
+    "GpuSampler",
+    "GpuBufferBinding",
+    "GpuBindGroupEntry",
+    "GpuBindGroupDescriptor",
+    "GpuBindGroupLayout",
+    "GpuBindGroup",
+    "GpuSamplerDescriptor",
+    "GpuAddressMode",
+    "GpuFilterMode",
+    "HtmlCanvasElement",
+    "Window",
+    "Document",
+    "ContextAttributes2d",
+    "CanvasRenderingContext2d",
+    "ImageData",
+    "GpuMipmapFilterMode",
+    "Element",
 ] }
 
 js-sys = "0.3.65"
+
+rand = "0.8.5"
+getrandom = { version = "0.2.10", features = ["js"] }
+
+mat4 = "0.2.1"

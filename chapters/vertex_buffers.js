@@ -1,15 +1,19 @@
 import { initVertexBuffers } from "../wasm_modules_initialization/vertex_buffers_init.js";
 
 
-export async function mainVertexBuffers() {
+function fail(msg) {
+    alert(msg);
+}
+
+export async function mainVertexBuffers(canvas) {
     if (!navigator.gpu) {
-        fail('this browser does not support WebGPU');
+        fail("this browser does not support WebGPU");
         return;
     }
 
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
-        fail('this browser supports webgpu but it appears disabled');
+        fail("this browser supports webgpu but it appears disabled");
         return;
     }
 
@@ -17,14 +21,13 @@ export async function mainVertexBuffers() {
     device.lost.then((info) => {
         console.error(`WebGPU device was lost: ${info.message}`);
 
-        // 'reason' will be 'destroyed' if we intentionally destroy the device.
-        if (info.reason !== 'destroyed') {
+        // 'reason' will be "destroyed" if we intentionally destroy the device.
+        if (info.reason !== "destroyed") {
             // try again
-            mainVertexBuffers();
+            mainVertexBuffers(canvas);
         }
     });
 
-    const canvas = document.getElementById("canvas");
     if (!canvas) {
         console.log("There are no canvas provided")
         return;

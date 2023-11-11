@@ -1,7 +1,7 @@
-import { initFundamentals } from "./wasm_modules_initialization/fundamentals_init.js";
+import { initFundamentals } from "../wasm_modules_initialization/fundamentals_init.js";
 
 
-export async function mainFundamentals() {
+export async function mainFundamentals(canvas) {
     const adapter = await navigator.gpu?.requestAdapter();
     const device = await adapter?.requestDevice();
     if (!device) {
@@ -9,7 +9,6 @@ export async function mainFundamentals() {
         return;
     }
 
-    const canvas = document.getElementById("canvas");
     if (!canvas) {
         console.log("There are no canvas provided")
         return;
