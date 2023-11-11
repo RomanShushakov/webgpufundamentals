@@ -1,3 +1,4 @@
+use std::f32::consts::PI;
 use std::ops::Deref;
 
 use js_sys::{Float32Array, Array, Uint8Array};
@@ -10,6 +11,7 @@ use web_sys::
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuImageCopyTexture, GpuImageDataLayout, GpuExtent3dDict,
     GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuBufferDescriptor,
     HtmlCanvasElement, GpuBufferBinding, GpuRenderPipeline, GpuBuffer, GpuBindGroup, ContextAttributes2d, ImageData,
+    GpuMipmapFilterMode, Element,
 };
 
 use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST};
@@ -259,9 +261,7 @@ pub struct Scene
 {
     gpu_device: GpuDevice,
     context: GpuCanvasContext,
-    bind_groups: Vec<GpuBindGroup>,
-    uniform_buffer: GpuBuffer,
-    uniform_values: Float32Array,
+    object_infos: Vec<(Vec<GpuBindGroup>, Float32Array, GpuBuffer)>,
     render_pipeline: GpuRenderPipeline,
 }
 
@@ -336,78 +336,73 @@ impl Scene
             create_texture_with_mips(create_checked_mipmap(), "checker"),
         ];
 
-        // create a buffer for the uniform values
-        let uniform_buffer_size =
-            2 * 4 + // scale is 2 32bit floats (4bytes each)
-            2 * 4;  // offset is 2 32bit floats (4bytes each)
-        let mut buffer_descriptor = GpuBufferDescriptor::new(
-            uniform_buffer_size.into(), UNIFORM | BUFFER_COPY_DST,
-        );
-        buffer_descriptor.label("uniforms for quad");
-        let uniform_buffer = gpu_device.create_buffer(&buffer_descriptor);
+        let mut object_infos = Vec::new();
 
-        // create a typedarray to hold the values for the uniforms in JavaScript
-        let uniform_values = Float32Array::new_with_length(uniform_buffer_size / 4);
-
-        let mut bind_groups = Vec::new();
-        for i in 0..16
+        for i in 0..8
         {
             let mut sampler_descriptor = GpuSamplerDescriptor::new();
             sampler_descriptor
-                .address_mode_u(if (i & 1) == 1 { GpuAddressMode::Repeat } else { GpuAddressMode::ClampToEdge })
-                .address_mode_v(if (i & 2) == 2 { GpuAddressMode::Repeat } else { GpuAddressMode::ClampToEdge })
-                .mag_filter(if (i & 4) == 4 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest })
-                .min_filter(if (i & 8) == 8 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest });
+                .address_mode_u(GpuAddressMode::Repeat)
+                .address_mode_v(GpuAddressMode::Repeat)
+                .mag_filter(if (i & 1) == 1 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest })
+                .min_filter(if (i & 2) == 2 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest })
+                .mipmap_filter(if (i & 4) == 4 { GpuMipmapFilterMode::Linear } else { GpuMipmapFilterMode::Nearest });
             let sampler = gpu_device.create_sampler_with_descriptor(&sampler_descriptor);
 
-            let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
-            let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &textures[0].create_view());
-            let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &GpuBufferBinding::new(&uniform_buffer));
-            let bind_group_0_entries = [
-                bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
-            ].iter().collect::<Array>();
-    
-            let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
-                &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
+            // create a buffer for the uniform values
+            let uniform_buffer_size =
+                16 * 4; // matrix is 16 32bit floats (4bytes each)
+            let mut buffer_descriptor = GpuBufferDescriptor::new(
+                uniform_buffer_size.into(), UNIFORM | BUFFER_COPY_DST,
             );
-            let bind_group_0 = gpu_device.create_bind_group(&bind_group_0_descriptor);
-            bind_groups.push(bind_group_0);
+            buffer_descriptor.label("uniforms for quad");
+            let uniform_buffer = gpu_device.create_buffer(&buffer_descriptor);
+
+            // create a typedarray to hold the values for the uniforms in JavaScript
+            let uniform_values = Float32Array::new_with_length(uniform_buffer_size / 4);
+
+            let bind_groups = textures.iter().map(|texture| 
+                {
+                    let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
+                    let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
+                    let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &GpuBufferBinding::new(&uniform_buffer));
+                    let bind_group_0_entries = [
+                        bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
+                    ].iter().collect::<Array>();
+                    let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
+                        &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
+                    );
+                    gpu_device.create_bind_group(&bind_group_0_descriptor)
+                }).collect::<Vec<GpuBindGroup>>();
+
+            object_infos.push((bind_groups, uniform_values, uniform_buffer));
         }
 
         Scene 
         {
-            gpu_device, context, bind_groups, uniform_buffer, uniform_values, render_pipeline,
+            gpu_device, context, object_infos, render_pipeline,
         }
     }
 
 
-    pub fn render(&mut self, ndx: usize, time: f32, scale: f32)
+    pub fn render(&mut self, tex_ndx: usize)
     {
-        let bind_group = &self.bind_groups[ndx];
-
-        // offsets to the various uniform values in float32 indices
-        let k_scale_offset = 0;
-        let k_offset_offset = 2;
-
-        // compute a scale that will draw our 0 to 1 clip space quad
-        // 2x2 pixels in the canvas.
-        let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
-        let scale_x = 4.0 / canvas.width() as f32 * scale;
-        let scale_y = 4.0 / canvas.height() as f32 * scale;
-
-        self.uniform_values.set(
-            &[scale_x, scale_y].iter().copied().map(JsValue::from).collect::<Array>(), 
-            k_scale_offset,
-        );
-        self.uniform_values.set(
-            &[f32::sin(time - 0.25) * 0.8, -0.8].iter().copied().map(JsValue::from).collect::<Array>(), 
-            k_offset_offset,
-        );
-    
-        // copy the values from JavaScript to the GPU
-        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
-            &self.uniform_buffer, 0, &self.uniform_values,
-        );
+        let fov = 60f32.to_radians();  // 60 degrees in radians
+        let canvas = self.context.canvas().dyn_into::<Element>().unwrap();
+        let aspect = (canvas.client_width() / canvas.client_height()) as f32;
+        let z_near  = 1f32;
+        let z_far   = 2000f32;
+        let mut projection_matrix = mat4::new_identity::<f32>();
+        mat4::perspective(&mut projection_matrix, &fov, &aspect, &z_near, &z_far);
+        let camera_position = [0.0, 0.0, 2.0];
+        let up = [0.0, 1.0, 0.0];
+        let target = [0.0, 0.0, 0.0];
+        let mut camera_matrix = mat4::new_identity::<f32>();
+        mat4::look_at(&mut camera_matrix, &camera_position, &target, &up);
+        let mut view_matrix = mat4::new_identity::<f32>();
+        mat4::inv(&mut view_matrix, &camera_matrix);
+        let mut view_projection_matrix = mat4::new_identity::<f32>();
+        mat4::mul(&mut view_projection_matrix, &projection_matrix, &view_matrix);
 
         let mut color_attachment = GpuRenderPassColorAttachment::new(
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
@@ -422,8 +417,40 @@ impl Scene
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
         render_pass_encoder.set_pipeline(&self.render_pipeline);
-        render_pass_encoder.set_bind_group(0, Some(bind_group));
-        render_pass_encoder.draw(6);
+
+        self.object_infos.iter().enumerate().for_each(
+            |(i, (bind_groups, uniform_values, uniform_buffer))| 
+            {
+                let bind_group = &bind_groups[tex_ndx];
+                
+                let x_spacing = 1.2;
+                let y_spacing = 0.7;
+                let z_depth = 50.0;
+
+                let x = i as f32 % 4.0 - 1.5;
+                let y = if i < 4 { 1.0 } else { -1.0 };
+
+                // offsets to the various uniform values in float32 indices
+                let k_matrix_offset = 0;
+                let mut matrix = mat4::new_identity::<f32>();
+                mat4::translate(&mut matrix, &view_projection_matrix, &[x * x_spacing, y * y_spacing, -z_depth * 0.5]);
+                let mut rotated_matrix = mat4::new_identity::<f32>();
+                mat4::rotate_x(&mut rotated_matrix, &matrix, &(PI * 0.5));
+                let mut scaled_matrix = mat4::new_identity::<f32>();
+                mat4::scale(&mut scaled_matrix, &rotated_matrix, &[1.0, z_depth * 2.0, 1.0]);
+                mat4::translate(&mut matrix, &scaled_matrix, &[-0.5, -0.5, 0.0]);
+
+                uniform_values.set(&matrix.iter().copied().map(JsValue::from).collect::<Array>(), k_matrix_offset);
+
+                // copy the values from JavaScript to the GPU
+                self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
+                    uniform_buffer, 0, uniform_values,
+                );
+
+                render_pass_encoder.set_bind_group(0, Some(&bind_group));
+                render_pass_encoder.draw(6);  // call our vertex shader 6 times
+            });
+
         render_pass_encoder.end();
 
         let command_buffer = command_encoder.finish();

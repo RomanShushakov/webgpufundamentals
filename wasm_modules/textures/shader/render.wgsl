@@ -6,8 +6,7 @@ struct VertexShaderOutput
 
 struct Uniforms 
 {
-    scale: vec2f,
-    offset: vec2f,
+    matrix: mat4x4f,
 };
  
 @group(0) @binding(2) var<uniform> uni: Uniforms;
@@ -29,8 +28,8 @@ fn vertex_main(@builtin(vertex_index) vertex_index : u32) -> VertexShaderOutput
 
     var vs_output: VertexShaderOutput;
     let xy = pos[vertex_index];
-    vs_output.position = vec4f(xy * uni.scale + uni.offset, 0.0, 1.0);
-    vs_output.texcoord = xy;
+    vs_output.position = uni.matrix * vec4f(xy, 0.0, 1.0);
+    vs_output.texcoord = xy * vec2f(1.0, 50.0);
     return vs_output;
 }
 
