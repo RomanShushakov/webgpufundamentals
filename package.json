@@ -10,6 +10,6 @@
     "devDependencies": {
         "dat.gui": "0.7.9",
         "sass": "1.69.5",
-        "vite": "5.0.4"
+        "vite": "5.0.7"
     }
 }
