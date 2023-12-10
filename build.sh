@@ -4,7 +4,8 @@ wasmModules=(
     ../uniforms uniforms
     ../storage_buffers storage_buffers
     ../vertex_buffers vertex_buffers
-    ../textures textures 
+    ../textures textures
+    ../loading_images loading_images
 )
 
 len=(${#wasmModules[@]})
