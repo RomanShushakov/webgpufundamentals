@@ -70,6 +70,10 @@ web-sys = { version = "0.3.66", features = [
     "ImageData",
     "GpuMipmapFilterMode",
     "Element",
+    "Response",
+    "Blob",
+    "ColorSpaceConversion",
+    "ImageBitmapOptions",
 ] }
 
 js-sys = "0.3.66"
@@ -78,3 +82,5 @@ rand = "0.8.5"
 getrandom = { version = "0.2.11", features = ["js"] }
 
 mat4 = "0.2.1"
+
+wasm-bindgen-futures = "0.4.39"

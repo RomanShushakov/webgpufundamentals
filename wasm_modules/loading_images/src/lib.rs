@@ -11,18 +11,47 @@ use web_sys::
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuImageCopyTexture, GpuImageDataLayout, GpuExtent3dDict,
     GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuBufferDescriptor,
     HtmlCanvasElement, GpuBufferBinding, GpuRenderPipeline, GpuBuffer, GpuBindGroup, ContextAttributes2d, ImageData,
-    GpuMipmapFilterMode, Element,
+    GpuMipmapFilterMode, Element, Response, Blob, ColorSpaceConversion, ImageBitmapOptions,
 };
 
 use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST};
 
 use web_sys::gpu_buffer_usage::{UNIFORM, COPY_DST as BUFFER_COPY_DST};
 
+use wasm_bindgen_futures::JsFuture;
+
 #[wasm_bindgen]
 extern "C"
 {
     #[wasm_bindgen(js_namespace = console)]
     pub fn log(value: &str);
+}
+
+
+async fn load_image_bitmap(url: &str) -> JsValue
+{
+    let window = web_sys::window().unwrap();
+    let res_value = JsFuture::from(window.fetch_with_str(url))
+        .await
+        .unwrap();
+    let res = res_value.dyn_into::<Response>().unwrap();
+
+    let blob = JsFuture::from(res.blob().unwrap())
+        .await
+        .unwrap()
+        .dyn_into::<Blob>()
+        .unwrap();
+
+    let image = JsFuture::from(
+        window.create_image_bitmap_with_blob_and_image_bitmap_options(
+            &blob, 
+            ImageBitmapOptions::new().color_space_conversion(ColorSpaceConversion::None),
+        )
+        .unwrap())
+        .await
+        .unwrap();
+
+    image
 }
 
 

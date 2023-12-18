@@ -32,7 +32,7 @@ export async function mainLoadingImages(canvas) {
         console.log("There are no canvas provided")
         return;
     }
-    
+
     const context = canvas.getContext("webgpu");
 
     const gpuTextureFormat = navigator.gpu.getPreferredCanvasFormat();
@@ -54,7 +54,7 @@ export async function mainLoadingImages(canvas) {
             canvas.height = Math.max(1, Math.min(height, device.limits.maxTextureDimension2D));
             scene.render(texNdx);
         }
-      });
+    });
     observer.observe(canvas);
 
     canvas.addEventListener("click", () => {
