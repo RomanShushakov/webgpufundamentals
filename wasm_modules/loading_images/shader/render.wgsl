@@ -4,13 +4,6 @@ struct VertexShaderOutput
     @location(0) texcoord: vec2f,
 };
 
-struct Uniforms 
-{
-    matrix: mat4x4f,
-};
- 
-@group(0) @binding(2) var<uniform> uni: Uniforms;
-
 @vertex 
 fn vertex_main(@builtin(vertex_index) vertex_index : u32) -> VertexShaderOutput
 {
@@ -28,8 +21,8 @@ fn vertex_main(@builtin(vertex_index) vertex_index : u32) -> VertexShaderOutput
 
     var vs_output: VertexShaderOutput;
     let xy = pos[vertex_index];
-    vs_output.position = uni.matrix * vec4f(xy, 0.0, 1.0);
-    vs_output.texcoord = xy * vec2f(1.0, 50.0);
+    vs_output.position = vec4f(xy, 0.0, 1.0);
+    vs_output.texcoord = xy;
     return vs_output;
 }
 
@@ -38,6 +31,5 @@ fn vertex_main(@builtin(vertex_index) vertex_index : u32) -> VertexShaderOutput
 
 @fragment fn fragment_main(fs_input: VertexShaderOutput) -> @location(0) vec4f 
 {
-  let texcoord = vec2f(fs_input.texcoord.x, 1.0 - fs_input.texcoord.y); // flip texture coordinates
-  return textureSample(our_texture, our_sampler, texcoord);
+  return textureSample(our_texture, our_sampler, fs_input.texcoord);
 }

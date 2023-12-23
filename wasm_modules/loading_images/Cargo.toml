@@ -39,10 +39,6 @@ web-sys = { version = "0.3.66", features = [
     "GpuRenderPassEncoder",
     "GpuCommandBuffer",
     "GpuQueue",
-    "GpuBufferDescriptor",
-    "GpuBuffer",
-    "gpu_buffer_usage",
-    "HtmlCanvasElement",
     "GpuVertexBufferLayout",
     "GpuVertexAttribute",
     "GpuVertexFormat",
@@ -50,11 +46,8 @@ web-sys = { version = "0.3.66", features = [
     "GpuIndexFormat",
     "GpuTextureDescriptor",
     "gpu_texture_usage",
-    "GpuImageCopyTexture",
-    "GpuImageDataLayout",
     "GpuExtent3dDict",
     "GpuSampler",
-    "GpuBufferBinding",
     "GpuBindGroupEntry",
     "GpuBindGroupDescriptor",
     "GpuBindGroupLayout",
@@ -62,18 +55,10 @@ web-sys = { version = "0.3.66", features = [
     "GpuSamplerDescriptor",
     "GpuAddressMode",
     "GpuFilterMode",
-    "HtmlCanvasElement",
-    "Window",
-    "Document",
-    "ContextAttributes2d",
     "CanvasRenderingContext2d",
-    "ImageData",
-    "GpuMipmapFilterMode",
-    "Element",
-    "Response",
-    "Blob",
-    "ColorSpaceConversion",
-    "ImageBitmapOptions",
+    "ImageBitmap",
+    "GpuImageCopyExternalImage",
+    "GpuImageCopyTextureTagged",
 ] }
 
 js-sys = "0.3.66"
@@ -82,5 +67,3 @@ rand = "0.8.5"
 getrandom = { version = "0.2.11", features = ["js"] }
 
 mat4 = "0.2.1"
-
-wasm-bindgen-futures = "0.4.39"

@@ -1,8 +1,38 @@
 import { initLoadingImages } from "../wasm_modules_initialization/loading_images_init.js";
+import * as dat from "dat.gui";
 
+const settings = {
+    addressModeU: "repeat",
+    addressModeV: "repeat",
+    magFilter: "linear",
+};
+
+const addressOptions = ["repeat", "clamp-to-edge"];
+const filterOptions = ["nearest", "linear"];
+
+let gui;
+function addGUI(fnc) {
+    gui = new dat.GUI();
+    Object.assign(gui.domElement.style, { position: "absolute", left: "0", top: "2rem" });
+
+    gui.add(settings, "addressModeU", addressOptions).onChange(fnc);
+    gui.add(settings, "addressModeV", addressOptions).onChange(fnc);
+    gui.add(settings, "magFilter", filterOptions).onChange(fnc);
+}
+
+export function destroyLoadingImagesGUI() {
+    gui?.destroy();
+    gui = undefined;
+}
 
 function fail(msg) {
     alert(msg);
+}
+
+async function loadImageBitmap(url) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await createImageBitmap(blob, { colorSpaceConversion: "none" });
 }
 
 export async function mainLoadingImages(canvas) {
@@ -41,9 +71,20 @@ export async function mainLoadingImages(canvas) {
         format: gpuTextureFormat,
     });
 
-    const scene = await initLoadingImages(device, context, gpuTextureFormat);
+    const url = "./assets/images/f-texture.png";
+    const imageBitmap = await loadImageBitmap(url);
 
-    let texNdx = 0;
+    const scene = await initLoadingImages(device, context, gpuTextureFormat, imageBitmap);
+
+    function render() {
+        const ndx = (settings.addressModeU === 'repeat' ? 1 : 0) +
+            (settings.addressModeV === 'repeat' ? 2 : 0) +
+            (settings.magFilter === 'linear' ? 4 : 0);
+        scene.render(ndx);
+        console.log("Rendered");
+    };
+
+    addGUI(render);
 
     const observer = new ResizeObserver(entries => {
         for (const entry of entries) {
@@ -52,13 +93,8 @@ export async function mainLoadingImages(canvas) {
             const height = entry.contentBoxSize[0].blockSize;
             canvas.width = Math.max(1, Math.min(width, device.limits.maxTextureDimension2D));
             canvas.height = Math.max(1, Math.min(height, device.limits.maxTextureDimension2D));
-            scene.render(texNdx);
+            render();
         }
     });
     observer.observe(canvas);
-
-    canvas.addEventListener("click", () => {
-        texNdx = (texNdx + 1) % 2;
-        scene.render(texNdx);
-    });
 }
