@@ -77,11 +77,10 @@ export async function mainLoadingImages(canvas) {
     const scene = await initLoadingImages(device, context, gpuTextureFormat, imageBitmap);
 
     function render() {
-        const ndx = (settings.addressModeU === 'repeat' ? 1 : 0) +
-            (settings.addressModeV === 'repeat' ? 2 : 0) +
-            (settings.magFilter === 'linear' ? 4 : 0);
+        const ndx = (settings.addressModeU === "repeat" ? 1 : 0) +
+            (settings.addressModeV === "repeat" ? 2 : 0) +
+            (settings.magFilter === "linear" ? 4 : 0);
         scene.render(ndx);
-        console.log("Rendered");
     };
 
     addGUI(render);

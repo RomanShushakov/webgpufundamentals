@@ -7,7 +7,7 @@ use web_sys::
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuExtent3dDict, GpuBindGroupEntry, GpuBindGroupDescriptor, 
     GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuRenderPipeline, GpuBindGroup, ImageBitmap, 
-    GpuImageCopyExternalImage, GpuImageCopyTextureTagged,
+    GpuImageCopyExternalImage, GpuImageCopyTextureTagged, GpuPrimitiveState, GpuPrimitiveTopology,
 };
 
 use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST, RENDER_ATTACHMENT};
@@ -65,6 +65,9 @@ impl Scene
         render_pipeline_descriptor
             .label("hardcoded textured quad pipeline")
             .fragment(&fragment_state);
+        let mut gpu_primitive_state = GpuPrimitiveState::new();
+        gpu_primitive_state.topology(GpuPrimitiveTopology::TriangleStrip);
+        render_pipeline_descriptor.primitive(&gpu_primitive_state);
         let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
 
         let texture_descriptor = GpuTextureDescriptor::new(
@@ -130,7 +133,7 @@ impl Scene
         render_pass_encoder.set_pipeline(&self.render_pipeline);
 
         render_pass_encoder.set_bind_group(0, Some(&self.bind_groups[ndx]));
-        render_pass_encoder.draw(6);  // call our vertex shader 6 times
+        render_pass_encoder.draw(4);  // call our vertex shader 4 times
 
         render_pass_encoder.end();
 

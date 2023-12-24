@@ -59,6 +59,8 @@ web-sys = { version = "0.3.66", features = [
     "ImageBitmap",
     "GpuImageCopyExternalImage",
     "GpuImageCopyTextureTagged",
+    "GpuPrimitiveState",
+    "GpuPrimitiveTopology",
 ] }
 
 js-sys = "0.3.66"
