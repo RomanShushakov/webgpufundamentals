@@ -8,9 +8,13 @@ use web_sys::
     GpuRenderPassDescriptor, GpuTextureDescriptor, GpuExtent3dDict, GpuBindGroupEntry, GpuBindGroupDescriptor, 
     GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuRenderPipeline, GpuBindGroup, ImageBitmap, 
     GpuImageCopyExternalImage, GpuImageCopyTextureTagged, GpuPrimitiveState, GpuPrimitiveTopology,
+    GpuBindGroupLayoutDescriptor, GpuBindGroupLayoutEntry, GpuPipelineLayoutDescriptor, GpuTextureBindingLayout,
+    GpuSamplerBindingLayout,
 };
 
 use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST, RENDER_ATTACHMENT};
+
+use web_sys::gpu_shader_stage::FRAGMENT;
 
 
 #[wasm_bindgen]
@@ -58,9 +62,32 @@ impl Scene
             "fragment_main", &render_shader_module, &fragment_state_targets,
         );
 
-        let render_layout = JsValue::from("auto");
+        // let render_layout = JsValue::from("auto");
+        // let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(
+        //     &render_layout, &vertex_state,
+        // );
+        let sampler_binding_layout = GpuSamplerBindingLayout::new();
+        let mut bind_group_layout_0_entry_0 = GpuBindGroupLayoutEntry::new(0, FRAGMENT);
+        bind_group_layout_0_entry_0.sampler(&sampler_binding_layout);
+        let texture_binding_layout = GpuTextureBindingLayout::new();
+        let mut bind_group_layout_0_entry_1 = GpuBindGroupLayoutEntry::new(1, FRAGMENT);
+        bind_group_layout_0_entry_1.texture(&texture_binding_layout);
+        let bind_group_layout_0_entries = [
+            &bind_group_layout_0_entry_0, &bind_group_layout_0_entry_1,
+        ].iter().collect::<js_sys::Array>();
+        let bind_group_layout_0_descriptor = GpuBindGroupLayoutDescriptor::new(&
+            bind_group_layout_0_entries,
+        );
+        let bind_group_layout_0 = gpu_device.create_bind_group_layout(
+            &bind_group_layout_0_descriptor,
+        );
+        let bind_group_layouts = [&bind_group_layout_0].iter().collect::<js_sys::Array>();
+        let pipeline_layout_descriptor = GpuPipelineLayoutDescriptor::new(
+            &bind_group_layouts,
+        );
+        let pipeline_layout = gpu_device.create_pipeline_layout(&pipeline_layout_descriptor);
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(
-            &render_layout, &vertex_state,
+            &pipeline_layout, &vertex_state,
         );
         render_pipeline_descriptor
             .label("hardcoded textured quad pipeline")
@@ -102,8 +129,11 @@ impl Scene
             let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
             let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
             let bind_group_0_entries = [bind_group_0_entry_0, bind_group_0_entry_1].iter().collect::<Array>();
+            // let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
+            //     &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
+            // );
             let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
-                &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
+                &bind_group_0_entries, &bind_group_layout_0,
             );
             let bind_group_0 = gpu_device.create_bind_group(&bind_group_0_descriptor);
             bind_groups.push(bind_group_0);

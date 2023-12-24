@@ -61,6 +61,13 @@ web-sys = { version = "0.3.66", features = [
     "GpuImageCopyTextureTagged",
     "GpuPrimitiveState",
     "GpuPrimitiveTopology",
+    "GpuBindGroupLayoutDescriptor",
+    "GpuBindGroupLayoutEntry",
+    "gpu_shader_stage",
+    "GpuPipelineLayout",
+    "GpuPipelineLayoutDescriptor",
+    "GpuTextureBindingLayout",
+    "GpuSamplerBindingLayout",
 ] }
 
 js-sys = "0.3.66"
