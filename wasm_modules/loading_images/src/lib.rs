@@ -32,6 +32,7 @@ pub struct Scene
     context: GpuCanvasContext,
     bind_groups: Vec<GpuBindGroup>,
     render_pipeline: GpuRenderPipeline,
+    render_pipeline_2: GpuRenderPipeline,
 }
 
 
@@ -60,6 +61,12 @@ impl Scene
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new(
             "fragment_main", &render_shader_module, &fragment_state_targets,
+        );
+
+        let vertex_state_2 = GpuVertexState::new("vertex_main_2", &render_shader_module);
+
+        let fragment_state_2 = GpuFragmentState::new(
+            "fragment_main_2", &render_shader_module, &fragment_state_targets,
         );
 
         // let render_layout = JsValue::from("auto");
@@ -96,6 +103,15 @@ impl Scene
         gpu_primitive_state.topology(GpuPrimitiveTopology::TriangleStrip);
         render_pipeline_descriptor.primitive(&gpu_primitive_state);
         let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
+
+        let mut render_pipeline_2_descriptor = GpuRenderPipelineDescriptor::new(
+            &pipeline_layout, &vertex_state_2,
+        );
+        render_pipeline_2_descriptor
+            .label("hardcoded textured quad pipeline 2")
+            .fragment(&fragment_state_2);
+        render_pipeline_2_descriptor.primitive(&gpu_primitive_state);
+        let render_pipeline_2 = gpu_device.create_render_pipeline(&render_pipeline_2_descriptor);
 
         let texture_descriptor = GpuTextureDescriptor::new(
             GpuTextureFormat::Rgba8unorm,
@@ -141,7 +157,7 @@ impl Scene
 
         Scene 
         {
-            gpu_device, context, bind_groups, render_pipeline,
+            gpu_device, context, bind_groups, render_pipeline, render_pipeline_2,
         }
     }
 
@@ -152,7 +168,7 @@ impl Scene
             GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
         );
         color_attachment.clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
-        let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
+        let color_attachments = [&color_attachment].iter().collect::<js_sys::Array>();
         let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
         render_pass_descriptor.label("basic canvas render pass");
 
@@ -160,9 +176,13 @@ impl Scene
         command_encoder.set_label("render quad encoder");
 
         let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
-        render_pass_encoder.set_pipeline(&self.render_pipeline);
 
         render_pass_encoder.set_bind_group(0, Some(&self.bind_groups[ndx]));
+
+        render_pass_encoder.set_pipeline(&self.render_pipeline);
+        render_pass_encoder.draw(4);  // call our vertex shader 4 times
+
+        render_pass_encoder.set_pipeline(&self.render_pipeline_2);
         render_pass_encoder.draw(4);  // call our vertex shader 4 times
 
         render_pass_encoder.end();

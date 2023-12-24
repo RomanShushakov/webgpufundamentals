@@ -59,6 +59,10 @@ web-sys = { version = "0.3.66", features = [
     "GpuBindGroupLayoutDescriptor",
     "gpu_shader_stage",
     "HtmlCanvasElement",
+    "GpuBlendState",
+    "GpuBlendComponent",
+    "GpuBlendFactor",
+    "GpuBlendOperation",  
 ] }
 
 js-sys = "0.3.66"

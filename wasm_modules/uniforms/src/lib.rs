@@ -4,9 +4,9 @@ use web_sys::
 {
     GpuDevice, GpuCanvasContext, GpuTextureFormat, GpuShaderModuleDescriptor, GpuVertexState, GpuColorTargetState, 
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
-    GpuRenderPassDescriptor, GpuBufferDescriptor, 
-    GpuBindGroupDescriptor, GpuBindGroupEntry, GpuBufferBinding,
-    HtmlCanvasElement, GpuRenderPipeline, GpuBuffer, GpuBindGroup,
+    GpuRenderPassDescriptor, GpuBufferDescriptor,  GpuBindGroupDescriptor, GpuBindGroupEntry, GpuBufferBinding,
+    HtmlCanvasElement, GpuRenderPipeline, GpuBuffer, GpuBindGroup, GpuBlendState, GpuBlendOperation, GpuBlendFactor,
+    GpuBlendComponent,
 
 };
 use web_sys::gpu_buffer_usage::{COPY_DST, UNIFORM};
@@ -48,7 +48,16 @@ impl Scene
 
         let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
 
-        let color_target_state = GpuColorTargetState::new(gpu_texture_format);
+        let mut color_target_state = GpuColorTargetState::new(gpu_texture_format);
+
+        let alpha = GpuBlendComponent::new();
+        let mut color = GpuBlendComponent::new();
+        color.src_factor(GpuBlendFactor::SrcAlpha);
+        color.dst_factor(GpuBlendFactor::OneMinusSrcAlpha);
+        color.operation(GpuBlendOperation::Add);
+        let blend_state = GpuBlendState::new(&alpha, &color);
+        color_target_state.blend(&blend_state);
+
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
 
@@ -91,7 +100,7 @@ impl Scene
 
             let static_uniform_values = Float32Array::new_with_length(static_uniform_buffer_size / 4);
 
-            let color = [rand(None, None), rand(None, None), rand(None, None), 1.0];
+            let color = [rand(None, None), rand(None, None), rand(None, None), 0.67];
             let color_array = Float32Array::new_with_length(color.len() as u32);
             color_array.copy_from(&color);
             static_uniform_values.set(&color_array, k_color_offset);       // set the color
