@@ -32,9 +32,6 @@ export async function mainTextures(canvas) {
         console.log("There are no canvas provided")
         return;
     }
-
-    canvas.style.imageRendering = "pixelated";
-    canvas.style.imageRendering = "crisp-edges";
     
     const context = canvas.getContext("webgpu");
 

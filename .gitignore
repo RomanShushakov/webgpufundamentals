@@ -20,3 +20,6 @@ wasm_modules/vertex_buffers/target
 
 wasm_modules/textures/Cargo.lock
 wasm_modules/textures/target
+
+wasm_modules/loading_images/Cargo.lock
+wasm_modules/loading_images/target

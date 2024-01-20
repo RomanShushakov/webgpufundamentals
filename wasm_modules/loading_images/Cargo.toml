@@ -1,5 +1,5 @@
 [package]
-name = "storage_buffers"
+name = "loading_images"
 version = "0.1.0"
 authors = ["roman shushakov <roman.a.shushakov1@gmail.com>"]
 edition = "2021"
@@ -39,29 +39,44 @@ web-sys = { version = "0.3.67", features = [
     "GpuRenderPassEncoder",
     "GpuCommandBuffer",
     "GpuQueue",
-    "GpuComputePipelineDescriptor",
-    "GpuComputePipeline",
-    "GpuProgrammableStage",
-    "GpuBufferDescriptor",
-    "GpuBuffer",
-    "GpuBindGroupDescriptor",
-    "GpuBindGroup",
-    "GpuBindGroupLayout",
+    "GpuVertexBufferLayout",
+    "GpuVertexAttribute",
+    "GpuVertexFormat",
+    "GpuVertexStepMode",
+    "GpuIndexFormat",
+    "GpuTextureDescriptor",
+    "gpu_texture_usage",
+    "GpuExtent3dDict",
+    "GpuSampler",
     "GpuBindGroupEntry",
-    "GpuBufferBinding",
-    "GpuComputePassDescriptor",
-    "GpuComputePassEncoder",
-    "gpu_buffer_usage",
-    "gpu_map_mode",
-    "GpuBindGroupLayoutEntry",
-    "GpuBufferBindingLayout",
-    "GpuBufferBindingType",
+    "GpuBindGroupDescriptor",
+    "GpuBindGroupLayout",
+    "GpuBindGroup",
+    "GpuSamplerDescriptor",
+    "GpuAddressMode",
+    "GpuFilterMode",
+    "CanvasRenderingContext2d",
+    "ImageBitmap",
+    "GpuImageCopyExternalImage",
+    "GpuImageCopyTextureTagged",
+    "GpuPrimitiveState",
+    "GpuPrimitiveTopology",
     "GpuBindGroupLayoutDescriptor",
+    "GpuBindGroupLayoutEntry",
     "gpu_shader_stage",
-    "HtmlCanvasElement",
+    "GpuPipelineLayout",
+    "GpuPipelineLayoutDescriptor",
+    "GpuTextureBindingLayout",
+    "GpuSamplerBindingLayout",
+    "GpuBlendState",
+    "GpuBlendComponent",
+    "GpuBlendFactor",
+    "GpuBlendOperation",    
 ] }
 
 js-sys = "0.3.67"
 
 rand = "0.8.5"
 getrandom = { version = "0.2.12", features = ["js"] }
+
+mat4 = "0.2.1"
