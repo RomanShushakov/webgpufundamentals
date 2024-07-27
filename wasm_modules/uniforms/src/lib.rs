@@ -46,7 +46,7 @@ impl Scene
         render_shader_module_descriptor.label("triangle shaders with uniforms");
         let render_shader_module = gpu_device.create_shader_module(&render_shader_module_descriptor);
 
-        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let vertex_state = GpuVertexState::new(&render_shader_module);
 
         let mut color_target_state = GpuColorTargetState::new(gpu_texture_format);
 
@@ -59,7 +59,7 @@ impl Scene
         color_target_state.blend(&blend_state);
 
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
-        let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
+        let fragment_state = GpuFragmentState::new(&render_shader_module, &fragment_state_targets);
 
         let render_layout = JsValue::from("auto");
         let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);

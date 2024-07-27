@@ -14,11 +14,11 @@ opt-level = 3
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.90"
+wasm-bindgen = "0.2.92"
 
-wasm-bindgen-futures = "0.4.40"
+wasm-bindgen-futures = "0.4.42"
 
-web-sys = { version = "0.3.67", features = [
+web-sys = { version = "0.3.69", features = [
     "GpuDevice",
     "GpuCanvasContext",
     "GpuTextureFormat",
@@ -57,4 +57,4 @@ web-sys = { version = "0.3.67", features = [
     "gpu_map_mode",
 ] }
 
-js-sys = "0.3.67"
+js-sys = "0.3.69"

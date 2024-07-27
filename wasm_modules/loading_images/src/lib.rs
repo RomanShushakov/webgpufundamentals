@@ -55,18 +55,18 @@ impl Scene
             &render_shader_module_descriptor,
         );
 
-        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let vertex_state = GpuVertexState::new(&render_shader_module);
 
         let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new(
-            "fragment_main", &render_shader_module, &fragment_state_targets,
+            &render_shader_module, &fragment_state_targets,
         );
 
-        let vertex_state_2 = GpuVertexState::new("vertex_main_2", &render_shader_module);
+        let vertex_state_2 = GpuVertexState::new(&render_shader_module);
 
         let fragment_state_2 = GpuFragmentState::new(
-            "fragment_main_2", &render_shader_module, &fragment_state_targets,
+            &render_shader_module, &fragment_state_targets,
         );
 
         // let render_layout = JsValue::from("auto");

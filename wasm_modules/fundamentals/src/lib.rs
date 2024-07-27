@@ -47,12 +47,12 @@ impl Scene
         render_shader_module_descriptor.label("Our hardcoded red triangle shaders");
         let render_shader_module = gpu_device.create_shader_module(&render_shader_module_descriptor);
 
-        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let vertex_state = GpuVertexState::new(&render_shader_module);
 
         let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new(
-            "fragment_main", &render_shader_module, &fragment_state_targets,
+            &render_shader_module, &fragment_state_targets,
         );
 
         let render_layout = JsValue::from("auto");
@@ -103,7 +103,7 @@ impl Scene
         compute_shader_module_descriptor.label("Doubling compute module");
         let compute_shader_module = self.gpu_device.create_shader_module(&compute_shader_module_descriptor);
 
-        let compute_stage = GpuProgrammableStage::new("compute_main", &compute_shader_module);
+        let compute_stage = GpuProgrammableStage::new(&compute_shader_module);
 
         let compute_layout = JsValue::from("auto");
         let mut compute_pipeline_descriptor = GpuComputePipelineDescriptor::new(&compute_layout, &compute_stage);
