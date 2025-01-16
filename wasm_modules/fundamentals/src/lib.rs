@@ -61,7 +61,7 @@ impl Scene
         );
         render_pipeline_descriptor.label("Our hardcoded red triangle pipeline");
         render_pipeline_descriptor.fragment(&fragment_state);
-        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
+        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor).unwrap();
 
         Scene 
         {
@@ -73,7 +73,7 @@ impl Scene
     pub fn render(&self)
     {        
         let mut color_attachment = GpuRenderPassColorAttachment::new(
-            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
+            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().unwrap().create_view().unwrap(),
         );
         color_attachment.clear_value(&GpuColorDict::new(1.0, 1.0, 0.0, 0.0));
         let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
@@ -83,7 +83,7 @@ impl Scene
         let command_encoder = self.gpu_device.create_command_encoder();
         command_encoder.set_label("Our command encoder");
 
-        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
+        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor).unwrap();
         render_pass_encoder.set_pipeline(&self.render_pipeline);
         render_pass_encoder.draw(3);
         render_pass_encoder.end();
@@ -117,7 +117,7 @@ impl Scene
             STORAGE | COPY_DST | COPY_SRC,
         );
         compute_input_buffer_descriptor.label("Compute input buffer");
-        let compute_input_buffer = self.gpu_device.create_buffer(&compute_input_buffer_descriptor);
+        let compute_input_buffer = self.gpu_device.create_buffer(&compute_input_buffer_descriptor).unwrap();
         self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(&compute_input_buffer, 0, &input_array);
 
         let mut compute_result_buffer_descriptor = GpuBufferDescriptor::new(
@@ -125,7 +125,7 @@ impl Scene
             MAP_READ | COPY_DST,
         );
         compute_result_buffer_descriptor.label("Compute result buffer");
-        let compute_result_buffer = self.gpu_device.create_buffer(&compute_result_buffer_descriptor);
+        let compute_result_buffer = self.gpu_device.create_buffer(&compute_result_buffer_descriptor).unwrap();
 
         let bind_group_entry_resource = GpuBufferBinding::new(&compute_input_buffer);
         let bind_group_entry = GpuBindGroupEntry::new(0, &bind_group_entry_resource);
@@ -152,7 +152,7 @@ impl Scene
 
 
         JsFuture::from(compute_result_buffer.map_async(READ)).await?;
-        let result_buffer = compute_result_buffer.get_mapped_range();
+        let result_buffer = compute_result_buffer.get_mapped_range().unwrap();
         let output = Float32Array::new(&result_buffer.slice(0));
         compute_result_buffer.unmap();
 
