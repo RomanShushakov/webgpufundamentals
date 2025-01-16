@@ -1,10 +1,4 @@
 import { mainFundamentals } from "./chapters/fundamentals.js";
-import { mainInterStageVariables } from "./chapters/inter_stage_variables.js";
-import { mainUniforms } from "./chapters/uniforms.js";
-import { mainStorageBuffers } from "./chapters/storage_buffers.js";
-import { mainVertexBuffers } from "./chapters/vertex_buffers.js";
-import { mainTextures } from "./chapters/textures.js";
-import { mainLoadingImages, destroyLoadingImagesGUI } from "./chapters/loading_images.js";
 import styleText from "./index.scss?inline";
 
 
@@ -54,34 +48,9 @@ export class CustomApp extends HTMLElement {
     async renderChapter(selectedChapter) {
         switch (selectedChapter) {
             case "fundamentals":
-                destroyLoadingImagesGUI();
                 await mainFundamentals(this.state.canvas);
                 break;
-            case "inter_stage_variables":
-                destroyLoadingImagesGUI();
-                await mainInterStageVariables(this.state.canvas);
-                break;
-            case "uniforms":
-                destroyLoadingImagesGUI();
-                await mainUniforms(this.state.canvas);
-                break;
-            case "storage_buffers":
-                destroyLoadingImagesGUI();
-                await mainStorageBuffers(this.state.canvas);
-                break;
-            case "vertex_buffers":
-                destroyLoadingImagesGUI();
-                await mainVertexBuffers(this.state.canvas);
-                break;
-            case "textures":
-                destroyLoadingImagesGUI();
-                await mainTextures(this.state.canvas);
-                break;
-            case "loading_images":
-                await mainLoadingImages(this.state.canvas);
-                break;
             default:
-                destroyLoadingImagesGUI();
                 await mainFundamentals(this.state.canvas);
         }
     }
