@@ -28,8 +28,6 @@ extern "C"
 pub struct Scene 
 {
     gpu_device: GpuDevice,
-    context: GpuCanvasContext,
-    render_pipeline: GpuRenderPipeline,
 }
 
 
@@ -37,59 +35,14 @@ pub struct Scene
 impl Scene
 {
     pub fn create(
-        gpu_device: GpuDevice, context: GpuCanvasContext, gpu_texture_format: GpuTextureFormat,
+        gpu_device: GpuDevice,
     ) 
         -> Self
     {
-        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(
-            &include_str!("../shader/render.wgsl"),
-        );
-        render_shader_module_descriptor.label("Our hardcoded red triangle shaders");
-        let render_shader_module = gpu_device.create_shader_module(&render_shader_module_descriptor);
-
-        let vertex_state = GpuVertexState::new(&render_shader_module);
-
-        let color_target_state = GpuColorTargetState::new(gpu_texture_format);
-        let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
-        let fragment_state = GpuFragmentState::new(
-            &render_shader_module, &fragment_state_targets,
-        );
-
-        let render_layout = JsValue::from("auto");
-        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(
-            &render_layout, &vertex_state,
-        );
-        render_pipeline_descriptor.label("Our hardcoded red triangle pipeline");
-        render_pipeline_descriptor.fragment(&fragment_state);
-        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor).unwrap();
-
         Scene 
         {
-            gpu_device, context, render_pipeline,
+            gpu_device,
         }
-    }
-
-
-    pub fn render(&self)
-    {        
-        let mut color_attachment = GpuRenderPassColorAttachment::new(
-            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().unwrap().create_view().unwrap(),
-        );
-        color_attachment.clear_value(&GpuColorDict::new(1.0, 1.0, 0.0, 0.0));
-        let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
-        let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
-        render_pass_descriptor.label("Our basic canvas render pass");
-
-        let command_encoder = self.gpu_device.create_command_encoder();
-        command_encoder.set_label("Our command encoder");
-
-        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor).unwrap();
-        render_pass_encoder.set_pipeline(&self.render_pipeline);
-        render_pass_encoder.draw(3);
-        render_pass_encoder.end();
-
-        let command_buffer = command_encoder.finish();
-        self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
     }
 
 
