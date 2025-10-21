@@ -1,5 +1,5 @@
 wasmModules=(
-    ./wasm_modules/fundamentals fundamentals
+    ./wasm_modules/compute_shaders compute_shaders
 )
 
 len=(${#wasmModules[@]})

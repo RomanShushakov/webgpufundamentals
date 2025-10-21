@@ -1,7 +1,7 @@
-import { initFundamentals } from "../wasm_modules_initialization/fundamentals_init.js";
+import { initComputeShaders } from "../wasm_modules_initialization/compute_shaders_init.js";
 
 
-export async function mainFundamentals(canvas) {
+export async function mainComputeShaders(canvas) {
   const adapter = await navigator.gpu?.requestAdapter();
   const device = await adapter?.requestDevice();
   if (!device) {
@@ -22,7 +22,7 @@ export async function mainFundamentals(canvas) {
     format: gpuTextureFormat,
   });
 
-  const scene = await initFundamentals(device, context, gpuTextureFormat);
+  const scene = await initComputeShaders(device, context, gpuTextureFormat);
 
 
   const input = new Float32Array([1, 3, 5, 7]);
