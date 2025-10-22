@@ -19,7 +19,12 @@ extern "C"
 {
     #[wasm_bindgen(js_namespace = console)]
     pub fn log(value: &str);
-} 
+}
+
+fn compose_shader_code(replace_from: &str, replace_to: &str) -> String
+{
+    include_str!("../shader/compute.wgsl").replace(replace_from, replace_to)
+}
 
 
 #[wasm_bindgen]
@@ -46,11 +51,21 @@ impl Scene
 
     pub async fn compute(&self, input: &[f32]) -> Result<Float32Array, JsValue>
     {
+        let dispatch_count = [4, 3, 2];
+        let work_group_size = [2, 3, 4];
+
+        // multiply all elements of an array
+        let array_prod = |arr: &[i32]| arr.iter().fold(1, |acc, x| acc * x);
+
+        let num_threads_per_work_group = array_prod(&work_group_size);
+
+        log(&num_threads_per_work_group.to_string());
+
         let command_encoder = self.gpu_device.create_command_encoder();
         command_encoder.set_label("Our command encoder");
 
-
-        let compute_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/compute.wgsl"));
+        let compute_shader_code = compose_shader_code("${work_group_size}", "1");
+        let compute_shader_module_descriptor = GpuShaderModuleDescriptor::new(&compute_shader_code);
         compute_shader_module_descriptor.set_label("Doubling compute module");
         let compute_shader_module = self.gpu_device.create_shader_module(&compute_shader_module_descriptor);
 
