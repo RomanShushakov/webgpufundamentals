@@ -3,9 +3,9 @@
 @group(0) @binding(2) var<storage, read_write> global_result: array<vec3u>;
  
 @compute @workgroup_size(${workgroup_size}) fn compute_main(
-    @builtin(workgroup_id) workgroup_id : vec3<u32>,
-    @builtin(local_invocation_id) local_invocation_id : vec3<u32>,
-    @builtin(global_invocation_id) global_invocation_id : vec3<u32>,
+    @builtin(workgroup_id) workgroup_id: vec3<u32>,
+    @builtin(local_invocation_id) local_invocation_id: vec3<u32>,
+    @builtin(global_invocation_id) global_invocation_id: vec3<u32>,
     @builtin(local_invocation_index) local_invocation_index: u32,
     @builtin(num_workgroups) num_workgroups: vec3<u32>
 )
