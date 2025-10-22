@@ -60,7 +60,7 @@ impl Scene
         let num_threads_per_workgroup = array_prod(&workgroup_size);
 
         let code = include_str!("../shader/compute_shader.wgsl")
-            .replace("${work_group_size}", &format!("{:?}", workgroup_size))
+            .replace("${workgroup_size}", &format!("{:?}", workgroup_size).replace("[", "").replace("]", ""))
             .replace("${num_threads_per_workgroup}", &format!("{:?}", num_threads_per_workgroup));
 
         log(&code);
@@ -68,7 +68,7 @@ impl Scene
         let command_encoder = self.gpu_device.create_command_encoder();
         command_encoder.set_label("Our command encoder");
 
-        let compute_shader_code = compose_shader_code("${work_group_size}", "1");
+        let compute_shader_code = compose_shader_code("${workgroup_size}", "1");
         let compute_shader_module_descriptor = GpuShaderModuleDescriptor::new(&compute_shader_code);
         compute_shader_module_descriptor.set_label("Doubling compute module");
         let compute_shader_module = self.gpu_device.create_shader_module(&compute_shader_module_descriptor);

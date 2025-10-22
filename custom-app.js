@@ -1,4 +1,4 @@
-import { mainComputeShaders } from "./chapters/compute_shaders.js";
+import { mainComputeShaderBasics } from "./chapters/compute_shader_basics.js";
 import styleText from "./index.scss?inline";
 
 export class CustomApp extends HTMLElement {
@@ -46,11 +46,11 @@ export class CustomApp extends HTMLElement {
 
   async renderChapter(selectedChapter) {
     switch (selectedChapter) {
-      case "compute_shaders":
-        await mainComputeShaders(this.state.canvas);
+      case "compute_shader_basics":
+        await mainComputeShaderBasics(this.state.canvas);
         break;
       default:
-        await mainComputeShaders(this.state.canvas);
+        await mainComputeShaderBasics(this.state.canvas);
     }
   }
 

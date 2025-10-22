@@ -1,5 +1,5 @@
 [package]
-name = "compute_shaders"
+name = "compute_shader_basics"
 version = "0.1.0"
 authors = ["roman shushakov <roman.a.shushakov1@gmail.com>"]
 edition = "2021"

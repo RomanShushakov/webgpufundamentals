@@ -3,5 +3,5 @@ package-lock.json
 public
 wasm
 
-wasm_modules/compute_shaders/Cargo.lock
-wasm_modules/compute_shaders/target
+wasm_modules/compute_shader_basics/Cargo.lock
+wasm_modules/compute_shader_basics/target
