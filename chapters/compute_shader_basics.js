@@ -1,6 +1,12 @@
 import { initComputeShaderBasics } from "../wasm_modules_initialization/compute_shader_basics_init.js";
 
-export async function mainComputeShaderBasics(canvas) {
+function log(...args) {
+  const elem = document.createElement("pre");
+  elem.textContent = args.join(" ");
+  document.body.appendChild(elem);
+}
+
+export async function mainComputeShaderBasics() {
   const adapter = await navigator.gpu?.requestAdapter();
   const device = await adapter?.requestDevice();
   if (!device) {
@@ -8,24 +14,37 @@ export async function mainComputeShaderBasics(canvas) {
     return;
   }
 
-  if (!canvas) {
-    console.log("There are no canvas provided");
-    return;
+  const scene = await initComputeShaderBasics(device);
+
+  const outputObject = await scene.compute();
+
+  const numResults = outputObject["num_results"];
+  const numThreadsPerWorkgroup = outputObject["num_threads_per_workgroup"];
+  const workgroup = outputObject["workgroup_read_output"];
+  const local = outputObject["local_read_output"];
+  const global = outputObject["global_read_output"];
+
+  const get3 = (arr, i) => {
+    const off = i * 4;
+    return `${arr[off]}, ${arr[off + 1]}, ${arr[off + 2]}`;
+  };
+
+  for (let i = 0; i < numResults; ++i) {
+    if (i % numThreadsPerWorkgroup === 0) {
+      log(`\
+---------------------------------------
+global                 local     global   dispatch: ${
+        i / numThreadsPerWorkgroup
+      }
+invoc.    workgroup    invoc.    invoc.
+index     id           id        id
+---------------------------------------`);
+    }
+    log(
+      `${i.toString().padStart(3)}:      ${get3(workgroup, i)}      ${get3(
+        local,
+        i
+      )}   ${get3(global, i)}`
+    );
   }
-
-  const context = canvas.getContext("webgpu");
-
-  const gpuTextureFormat = navigator.gpu.getPreferredCanvasFormat();
-  context.configure({
-    device,
-    format: gpuTextureFormat,
-  });
-
-  const scene = await initComputeShaderBasics(device, context, gpuTextureFormat);
-
-  const input = new Float32Array([1, 3, 5, 7]);
-  const output = await scene.compute(input);
-
-  console.log("Input:", input);
-  console.log("Output:", output);
 }
