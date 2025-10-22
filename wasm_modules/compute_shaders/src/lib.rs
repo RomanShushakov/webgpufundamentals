@@ -52,14 +52,18 @@ impl Scene
     pub async fn compute(&self, input: &[f32]) -> Result<Float32Array, JsValue>
     {
         let dispatch_count = [4, 3, 2];
-        let work_group_size = [2, 3, 4];
+        let workgroup_size = [2, 3, 4];
 
         // multiply all elements of an array
         let array_prod = |arr: &[i32]| arr.iter().fold(1, |acc, x| acc * x);
 
-        let num_threads_per_work_group = array_prod(&work_group_size);
+        let num_threads_per_workgroup = array_prod(&workgroup_size);
 
-        log(&num_threads_per_work_group.to_string());
+        let code = include_str!("../shader/compute_shader.wgsl")
+            .replace("${work_group_size}", &format!("{:?}", workgroup_size))
+            .replace("${num_threads_per_workgroup}", &format!("{:?}", num_threads_per_workgroup));
+
+        log(&code);
 
         let command_encoder = self.gpu_device.create_command_encoder();
         command_encoder.set_label("Our command encoder");
