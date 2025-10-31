@@ -3,11 +3,13 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::
 {
     GpuDevice, GpuShaderModuleDescriptor, GpuComputePipelineDescriptor, GpuProgrammableStage, GpuBufferDescriptor,
-    GpuBindGroupDescriptor, GpuBindGroupEntry, GpuBufferBinding, GpuComputePassDescriptor,
+    GpuBindGroupDescriptor, GpuBindGroupEntry, GpuBufferBinding, GpuComputePassDescriptor, GpuBufferBindingLayout,
+    GpuBindGroupLayoutEntry, GpuBindGroupLayoutDescriptor, GpuPipelineLayoutDescriptor, GpuBufferBindingType,
 };
 use web_sys::gpu_buffer_usage::{COPY_SRC, COPY_DST, STORAGE, MAP_READ};
 use web_sys::gpu_map_mode::READ;
-use js_sys::{Uint32Array, Object, Reflect};
+use web_sys::gpu_shader_stage::COMPUTE;
+use js_sys::{Uint32Array, Object, Reflect, Array};
 use futures::future::join3;
 
 
@@ -100,9 +102,54 @@ impl Scene
         compute_shader_module_descriptor.set_label("compute module");
         let compute_shader_module = self.gpu_device.create_shader_module(&compute_shader_module_descriptor);
         let compute_stage = GpuProgrammableStage::new(&compute_shader_module);
-        let compute_layout = JsValue::from("auto");
+
+
+        // Define workgroup_result bind group layout
+        let workgroup_result_binding_layout = GpuBufferBindingLayout::new();
+        workgroup_result_binding_layout.set_type(GpuBufferBindingType::Storage);
+        let bind_group_0_layout_entry_0 = GpuBindGroupLayoutEntry::new(
+            0, COMPUTE,
+        );
+        bind_group_0_layout_entry_0.set_buffer(&workgroup_result_binding_layout);
+
+        // Define local_result bind group layout
+        let local_result_binding_layout = GpuBufferBindingLayout::new();
+        local_result_binding_layout.set_type(GpuBufferBindingType::Storage);
+        let bind_group_0_layout_entry_1 = GpuBindGroupLayoutEntry::new(
+            1, COMPUTE,
+        );
+        bind_group_0_layout_entry_1.set_buffer(&local_result_binding_layout);
+
+        // Define global_result bind group layout
+        let global_result_binding_layout = GpuBufferBindingLayout::new();
+        global_result_binding_layout.set_type(GpuBufferBindingType::Storage);
+        let bind_group_0_layout_entry_2 = GpuBindGroupLayoutEntry::new(
+            2, COMPUTE,
+        );
+        bind_group_0_layout_entry_2.set_buffer(&global_result_binding_layout);
+
+        let bind_group_0_layout_descriptor = GpuBindGroupLayoutDescriptor::new(
+            &[
+                &bind_group_0_layout_entry_0,
+                &bind_group_0_layout_entry_1,
+                &bind_group_0_layout_entry_2,
+            ].iter().collect::<Array>(),
+        );
+        let bind_group_0_layout = self.gpu_device
+            .create_bind_group_layout(&bind_group_0_layout_descriptor)?;
+
+        let pipeline_layout_descriptor = GpuPipelineLayoutDescriptor::new(
+            &[&bind_group_0_layout].iter().collect::<Array>(),
+        );
+        let compute_layout = self.gpu_device.create_pipeline_layout(
+            &pipeline_layout_descriptor,
+        );
+
+        // let compute_layout = JsValue::from("auto");
+
         let compute_pipeline_descriptor = GpuComputePipelineDescriptor::new(
-            &compute_layout, &compute_stage,
+            &compute_layout,
+            &compute_stage,
         );
         compute_pipeline_descriptor.set_label("compute pipeline");
         let compute_pipeline = self.gpu_device.create_compute_pipeline(&compute_pipeline_descriptor);
@@ -117,11 +164,12 @@ impl Scene
             bind_group_0_entry_0,
             bind_group_0_entry_1,
             bind_group_0_entry_2,
-        ].iter().collect::<js_sys::Array>();
-        let compute_bind_group_0_layout = compute_pipeline.get_bind_group_layout(0);
+        ].iter().collect::<Array>();
+        // let compute_bind_group_0_layout = compute_pipeline.get_bind_group_layout(0);
         let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
             &bind_group_0_entries,
-            &compute_bind_group_0_layout,
+            // &compute_bind_group_0_layout,
+            &bind_group_0_layout,
         );
         let bind_group_0 = self.gpu_device.create_bind_group(&bind_group_0_descriptor);
 
@@ -153,7 +201,7 @@ impl Scene
 
 
         let command_buffer = command_encoder.finish();
-        self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
+        self.gpu_device.queue().submit(&[command_buffer].iter().collect::<Array>());
 
         let _ = join3(
             JsFuture::from(workgroup_read_buffer.map_async(READ)),
