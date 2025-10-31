@@ -12,7 +12,7 @@ use web_sys::gpu_buffer_usage::{COPY_DST, VERTEX, INDEX};
 
 use js_sys::{Float32Array, Uint8Array, Uint32Array};
 
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 
 
 #[wasm_bindgen]
@@ -25,10 +25,10 @@ extern "C"
 
 fn rand(min: Option<f32>, max: Option<f32>) -> f32
 {
-    let mut rng = thread_rng();
-    if min.is_none() { return rng.gen_range(0.0..1.0); };
-    if max.is_none() { return rng.gen_range(0.0..min.unwrap()); };
-    rng.gen_range(min.unwrap()..max.unwrap())
+    let mut rng = rng();
+    if min.is_none() { return rng.random_range(0.0..1.0); };
+    if max.is_none() { return rng.random_range(0.0..min.unwrap()); };
+    rng.random_range(min.unwrap()..max.unwrap())
 }
 
 
@@ -145,17 +145,17 @@ impl Scene
     pub fn create(
         gpu_device: GpuDevice, context: GpuCanvasContext, gpu_texture_format: GpuTextureFormat,
     ) 
-        -> Self
+        -> Result<Self, JsValue>
     {
-        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(
+        let render_shader_module_descriptor = GpuShaderModuleDescriptor::new(
             &include_str!("../shader/render.wgsl"),
         );
-        render_shader_module_descriptor.label("triangle shaders with vertex buffers");
+        render_shader_module_descriptor.set_label("triangle shaders with vertex buffers");
         let render_shader_module = gpu_device.create_shader_module(
             &render_shader_module_descriptor,
         );
 
-        let mut vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let vertex_state = GpuVertexState::new(&render_shader_module);
 
         let vertex_position_format = GpuVertexFormat::Float32x2;
         let vertex_position_buffer_attribute = GpuVertexAttribute::new(
@@ -183,10 +183,10 @@ impl Scene
         let vertex_color_offset_buffer_attributes = [
             vertex_color_buffer_attribute, vertex_offset_buffer_attribute,
         ].iter().collect::<js_sys::Array>();
-        let mut vertex_color_offset_buffer_layout = GpuVertexBufferLayout::new(
+        let vertex_color_offset_buffer_layout = GpuVertexBufferLayout::new(
             4f64 + 2f64 * 4f64, &vertex_color_offset_buffer_attributes,    // 4 bytes + 2 floats, 4 bytes each
         );
-        vertex_color_offset_buffer_layout.step_mode(GpuVertexStepMode::Instance);
+        vertex_color_offset_buffer_layout.set_step_mode(GpuVertexStepMode::Instance);
 
         let vertex_scale_format = GpuVertexFormat::Float32x2;
         let vertex_scale_buffer_attribute = GpuVertexAttribute::new(
@@ -195,25 +195,25 @@ impl Scene
         let vertex_scale_buffer_attributes = [
             vertex_scale_buffer_attribute,
         ].iter().collect::<js_sys::Array>();
-        let mut vertex_scale_buffer_layout = GpuVertexBufferLayout::new(
+        let vertex_scale_buffer_layout = GpuVertexBufferLayout::new(
             2f64 * 4f64, &vertex_scale_buffer_attributes,    // 2 floats, 4 bytes each
         );
-        vertex_scale_buffer_layout.step_mode(GpuVertexStepMode::Instance);
+        vertex_scale_buffer_layout.set_step_mode(GpuVertexStepMode::Instance);
 
         let vertex_buffers = [
             vertex_position_buffer_layout, vertex_color_offset_buffer_layout, vertex_scale_buffer_layout,
         ].iter().collect::<js_sys::Array>();
-        vertex_state.buffers(&vertex_buffers);
+        vertex_state.set_buffers(&vertex_buffers);
 
         let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
-        let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
+        let fragment_state = GpuFragmentState::new(&render_shader_module, &fragment_state_targets);
 
         let render_layout = JsValue::from("auto");
-        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
-        render_pipeline_descriptor.label("triangle with vertex buffers");
-        render_pipeline_descriptor.fragment(&fragment_state);
-        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
+        let render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
+        render_pipeline_descriptor.set_label("triangle with vertex buffers");
+        render_pipeline_descriptor.set_fragment(&fragment_state);
+        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor)?;
 
         let k_num_objects = 100;
         let mut object_infos = Vec::new();
@@ -229,19 +229,19 @@ impl Scene
         let static_vertex_buffer_size = static_unit_size * k_num_objects;
         let changing_vertex_buffer_size = changing_unit_size * k_num_objects;
 
-        let mut static_vertex_buffer_descriptor = GpuBufferDescriptor::new(
+        let static_vertex_buffer_descriptor = GpuBufferDescriptor::new(
             static_vertex_buffer_size.into(),
             VERTEX | COPY_DST,
         );
-        static_vertex_buffer_descriptor.label("static storage for objects");
-        let static_vertex_buffer = gpu_device.create_buffer(&static_vertex_buffer_descriptor); 
+        static_vertex_buffer_descriptor.set_label("static storage for objects");
+        let static_vertex_buffer = gpu_device.create_buffer(&static_vertex_buffer_descriptor)?; 
 
-        let mut changing_vertex_buffer_descriptor = GpuBufferDescriptor::new(
+        let changing_vertex_buffer_descriptor = GpuBufferDescriptor::new(
             changing_vertex_buffer_size.into(),
             VERTEX | COPY_DST,
         );
-        changing_vertex_buffer_descriptor.label("changing storage for objects");
-        let changing_vertex_buffer = gpu_device.create_buffer(&changing_vertex_buffer_descriptor);
+        changing_vertex_buffer_descriptor.set_label("changing storage for objects");
+        let changing_vertex_buffer = gpu_device.create_buffer(&changing_vertex_buffer_descriptor)?;
 
         let k_color_offset = 0u32;
         let k_offset_offset = 1u32;
@@ -278,7 +278,7 @@ impl Scene
         }
         gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &static_vertex_buffer, 0, &static_vertex_values_f32,
-        );
+        )?;
 
         // a typed array we can use to update the changingStorageBuffer
         let changing_vertex_values = Float32Array::new_with_length(changing_vertex_buffer_size / 4);
@@ -287,48 +287,48 @@ impl Scene
         let (vertex_data, index_data, num_indexes) = 
             create_circle_vertices(Some(0.5), Some(0.25));
 
-        let mut vertex_buffer_descriptor = GpuBufferDescriptor::new(
+        let vertex_buffer_descriptor = GpuBufferDescriptor::new(
             vertex_data.byte_length().into(),
             VERTEX | COPY_DST,
         );
-        vertex_buffer_descriptor.label("vertex buffer vertices");
-        let vertex_buffer = gpu_device.create_buffer(&vertex_buffer_descriptor);
+        vertex_buffer_descriptor.set_label("vertex buffer vertices");
+        let vertex_buffer = gpu_device.create_buffer(&vertex_buffer_descriptor)?;
         gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &vertex_buffer, 0, &vertex_data,
-        );
+        )?;
 
-        let mut index_buffer_descriptor = GpuBufferDescriptor::new(
+        let index_buffer_descriptor = GpuBufferDescriptor::new(
             index_data.byte_length().into(),
             INDEX | COPY_DST,
         );
-        let index_buffer = gpu_device.create_buffer(&index_buffer_descriptor);
-        index_buffer_descriptor.label("index buffer");
+        let index_buffer = gpu_device.create_buffer(&index_buffer_descriptor)?;
+        index_buffer_descriptor.set_label("index buffer");
         gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &index_buffer, 0, &index_data,
-        );
+        )?;
 
-        Scene 
+        Ok(Scene 
         {
             gpu_device, context, vertex_buffer, static_vertex_buffer, changing_vertex_buffer, index_buffer,
             render_pipeline, object_infos, changing_unit_size, changing_vertex_values, num_indexes, k_num_objects,
-        }
+        })
     }
 
 
-    pub fn render(&self)
+    pub fn render(&self) -> Result<(), JsValue>
     {
-        let mut color_attachment = GpuRenderPassColorAttachment::new(
-            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
+        let color_attachment = GpuRenderPassColorAttachment::new(
+            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture()?.create_view()?,
         );
-        color_attachment.clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
+        color_attachment.set_clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
         let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
-        let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
-        render_pass_descriptor.label("basic canvas render pass");
+        let render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
+        render_pass_descriptor.set_label("basic canvas render pass");
 
         let command_encoder = self.gpu_device.create_command_encoder();
         command_encoder.set_label("command encoder");
 
-        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
+        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor)?;
         render_pass_encoder.set_pipeline(&self.render_pipeline);
         render_pass_encoder.set_vertex_buffer(0, Some(&self.vertex_buffer));
         render_pass_encoder.set_vertex_buffer(1, Some(&self.static_vertex_buffer));
@@ -350,7 +350,7 @@ impl Scene
         }
         self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &self.changing_vertex_buffer, 0, &self.changing_vertex_values,
-        );
+        )?;
 
         render_pass_encoder.draw_indexed_with_instance_count(self.num_indexes, self.k_num_objects);
 
@@ -358,5 +358,7 @@ impl Scene
 
         let command_buffer = command_encoder.finish();
         self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
+
+        Ok(())
     }
 }

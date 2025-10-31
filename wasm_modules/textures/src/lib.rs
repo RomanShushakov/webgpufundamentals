@@ -8,10 +8,10 @@ use web_sys::
 {
     GpuDevice, GpuCanvasContext, GpuTextureFormat, GpuShaderModuleDescriptor, GpuVertexState, GpuColorTargetState, 
     GpuFragmentState, GpuRenderPipelineDescriptor, GpuRenderPassColorAttachment, GpuLoadOp, GpuStoreOp, GpuColorDict, 
-    GpuRenderPassDescriptor, GpuTextureDescriptor, GpuImageCopyTexture, GpuImageDataLayout, GpuExtent3dDict,
-    GpuBindGroupEntry, GpuBindGroupDescriptor, GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuBufferDescriptor,
-    HtmlCanvasElement, GpuBufferBinding, GpuRenderPipeline, GpuBuffer, GpuBindGroup, ContextAttributes2d, ImageData,
-    GpuMipmapFilterMode, Element,
+    GpuRenderPassDescriptor, GpuTextureDescriptor, GpuExtent3dDict, GpuBindGroupEntry, GpuBindGroupDescriptor,
+    GpuSamplerDescriptor, GpuAddressMode, GpuFilterMode, GpuBufferDescriptor, HtmlCanvasElement, GpuBufferBinding,
+    GpuRenderPipeline, GpuBuffer, GpuBindGroup, ContextAttributes2d, ImageData, GpuMipmapFilterMode, Element,
+    GpuTexelCopyBufferLayout, GpuTexelCopyTextureInfo,
 };
 
 use web_sys::gpu_texture_usage::{TEXTURE_BINDING, COPY_DST as TEXTURE_COPY_DST};
@@ -48,7 +48,7 @@ fn bilinear_filter(tl: &[f32], tr: &[f32], bl: &[f32], br: &[f32], t1: f32, t2: 
 
 trait MipTrait
 {
-    fn data(&self) -> Vec<u8>;
+    fn data(&self) -> Uint8Array;
     fn width(&self) -> f32;
     fn height(&self) -> f32;
 }
@@ -65,9 +65,9 @@ struct Mip
 
 impl MipTrait for Mip
 {
-    fn data(&self) -> Vec<u8> 
+    fn data(&self) -> Uint8Array
     {
-        self.data.to_vec().clone()
+        self.data.clone()
     }
 
 
@@ -86,9 +86,9 @@ impl MipTrait for Mip
 
 impl MipTrait for ImageData
 {
-    fn data(&self) -> Vec<u8> 
+    fn data(&self) -> Uint8Array
     {
-        self.data().deref().clone()
+        Uint8Array::from(self.data().deref().clone().as_slice())
     }
 
 
@@ -219,8 +219,8 @@ fn create_blended_mipmap() -> Vec<Box<dyn MipTrait>>
 fn create_checked_mipmap() -> Vec<Box<dyn MipTrait>>
 {
     let document = web_sys::window().unwrap().document().unwrap();
-    let mut context_options = ContextAttributes2d::new();
-    context_options.will_read_frequently(true);
+    let context_options = ContextAttributes2d::new();
+    context_options.set_will_read_frequently(true);
     let ctx = document
         .create_element("canvas")
         .unwrap()
@@ -246,9 +246,9 @@ fn create_checked_mipmap() -> Vec<Box<dyn MipTrait>>
         {
             ctx.canvas().unwrap().set_width(size);
             ctx.canvas().unwrap().set_height(size);
-            ctx.set_fill_style(&JsValue::from(if (i & 1) == 1 { "#000" } else { "#fff" }));
+            ctx.set_fill_style_str(&(if (i & 1) == 1 { "#000" } else { "#fff" }));
             ctx.fill_rect(0.0, 0.0, size as f64, size as f64);
-            ctx.set_fill_style(&JsValue::from(color));
+            ctx.set_fill_style_str(&color);
             ctx.fill_rect(0.0, 0.0, size as f64 / 2.0, size as f64 / 2.0);
             ctx.fill_rect(size as f64 / 2.0, size as f64 / 2.0, size as f64 / 2.0, size as f64 / 2.0);
             Box::new(ctx.get_image_data(0.0, 0.0, size as f64, size as f64).unwrap()) as Box<dyn MipTrait>
@@ -272,60 +272,59 @@ impl Scene
     pub fn create(
         gpu_device: GpuDevice, context: GpuCanvasContext, gpu_texture_format: GpuTextureFormat,
     ) 
-        -> Self
+        -> Result<Self, JsValue>
     {
-        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(
+        let render_shader_module_descriptor = GpuShaderModuleDescriptor::new(
             &include_str!("../shader/render.wgsl"),
         );
-        render_shader_module_descriptor.label("our hardcoded textured quad shaders");
+        render_shader_module_descriptor.set_label("our hardcoded textured quad shaders");
         let render_shader_module = gpu_device.create_shader_module(
             &render_shader_module_descriptor,
         );
 
-        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let vertex_state = GpuVertexState::new(&render_shader_module);
 
         let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new(
-            "fragment_main", &render_shader_module, &fragment_state_targets,
+            &render_shader_module, &fragment_state_targets,
         );
 
         let render_layout = JsValue::from("auto");
-        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(
+        let render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(
             &render_layout, &vertex_state,
         );
-        render_pipeline_descriptor
-            .label("hardcoded textured quad pipeline")
-            .fragment(&fragment_state);
-        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
+        render_pipeline_descriptor.set_label("hardcoded textured quad pipeline");
+        render_pipeline_descriptor.set_fragment(&fragment_state);
+        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor)?;
 
         let create_texture_with_mips = |mips: Vec<Box<dyn MipTrait>>, label: &str| 
             {
-                let mut texture_descriptor = GpuTextureDescriptor::new(
+                let texture_descriptor = GpuTextureDescriptor::new(
                     GpuTextureFormat::Rgba8unorm,
                     &[mips[0].width(), mips[0].height()].iter().copied().map(JsValue::from).collect::<js_sys::Array>(),
                     TEXTURE_BINDING | TEXTURE_COPY_DST,
                 );
-                texture_descriptor.label(label);
-                texture_descriptor.mip_level_count(mips.len() as u32);
+                texture_descriptor.set_label(label);
+                texture_descriptor.set_mip_level_count(mips.len() as u32);
 
-                let texture = gpu_device.create_texture(&texture_descriptor);
+                let texture = gpu_device.create_texture(&texture_descriptor).unwrap();
 
                 mips.iter().enumerate().for_each(|(mip_level, m)| 
                 {
-                    let mut gpu_image_copy_texture = GpuImageCopyTexture::new(&texture);
-                    gpu_image_copy_texture.mip_level(mip_level as u32);
-                    let mut gpu_image_data_layout = GpuImageDataLayout::new();
-                    gpu_image_data_layout.bytes_per_row(m.width() as u32 * 4);
-                    let mut gpu_extent_3d_dict = GpuExtent3dDict::new(m.width() as u32);
-                    gpu_extent_3d_dict.height(m.height() as u32);
+                    let gpu_image_copy_texture = GpuTexelCopyTextureInfo::new(&texture);
+                    gpu_image_copy_texture.set_mip_level(mip_level as u32);
+                    let gpu_image_data_layout = GpuTexelCopyBufferLayout::new();
+                    gpu_image_data_layout.set_bytes_per_row(m.width() as u32 * 4);
+                    let gpu_extent_3d_dict = GpuExtent3dDict::new(m.width() as u32);
+                    gpu_extent_3d_dict.set_height(m.height() as u32);
 
                     gpu_device.queue().write_texture_with_u8_array_and_gpu_extent_3d_dict(
                         &gpu_image_copy_texture, 
-                        &m.data(), 
+                        &m.data().into(), 
                         &gpu_image_data_layout, 
                         &gpu_extent_3d_dict,
-                    );
+                    ).unwrap();
                 });
 
                 texture
@@ -340,23 +339,22 @@ impl Scene
 
         for i in 0..8
         {
-            let mut sampler_descriptor = GpuSamplerDescriptor::new();
-            sampler_descriptor
-                .address_mode_u(GpuAddressMode::Repeat)
-                .address_mode_v(GpuAddressMode::Repeat)
-                .mag_filter(if (i & 1) == 1 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest })
-                .min_filter(if (i & 2) == 2 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest })
-                .mipmap_filter(if (i & 4) == 4 { GpuMipmapFilterMode::Linear } else { GpuMipmapFilterMode::Nearest });
+            let sampler_descriptor = GpuSamplerDescriptor::new();
+            sampler_descriptor.set_address_mode_u(GpuAddressMode::Repeat);
+            sampler_descriptor.set_address_mode_v(GpuAddressMode::Repeat);
+            sampler_descriptor.set_mag_filter(if (i & 1) == 1 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest });
+            sampler_descriptor.set_min_filter(if (i & 2) == 2 { GpuFilterMode::Linear } else { GpuFilterMode::Nearest });
+            sampler_descriptor.set_mipmap_filter(if (i & 4) == 4 { GpuMipmapFilterMode::Linear } else { GpuMipmapFilterMode::Nearest });
             let sampler = gpu_device.create_sampler_with_descriptor(&sampler_descriptor);
 
             // create a buffer for the uniform values
             let uniform_buffer_size =
                 16 * 4; // matrix is 16 32bit floats (4bytes each)
-            let mut buffer_descriptor = GpuBufferDescriptor::new(
+            let buffer_descriptor = GpuBufferDescriptor::new(
                 uniform_buffer_size.into(), UNIFORM | BUFFER_COPY_DST,
             );
-            buffer_descriptor.label("uniforms for quad");
-            let uniform_buffer = gpu_device.create_buffer(&buffer_descriptor);
+            buffer_descriptor.set_label("uniforms for quad");
+            let uniform_buffer = gpu_device.create_buffer(&buffer_descriptor)?;
 
             // create a typedarray to hold the values for the uniforms in JavaScript
             let uniform_values = Float32Array::new_with_length(uniform_buffer_size / 4);
@@ -364,7 +362,7 @@ impl Scene
             let bind_groups = textures.iter().map(|texture| 
                 {
                     let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &sampler);
-                    let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view());
+                    let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &texture.create_view().unwrap().into());
                     let bind_group_0_entry_2 = GpuBindGroupEntry::new(2, &GpuBufferBinding::new(&uniform_buffer));
                     let bind_group_0_entries = [
                         bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
@@ -378,14 +376,14 @@ impl Scene
             object_infos.push((bind_groups, uniform_values, uniform_buffer));
         }
 
-        Scene 
+        Ok(Scene 
         {
             gpu_device, context, object_infos, render_pipeline,
-        }
+        })
     }
 
 
-    pub fn render(&mut self, tex_ndx: usize)
+    pub fn render(&mut self, tex_ndx: usize) -> Result<(), JsValue>
     {
         let fov = 60f32.to_radians();  // 60 degrees in radians
         let canvas = self.context.canvas().dyn_into::<Element>().unwrap();
@@ -404,18 +402,18 @@ impl Scene
         let mut view_projection_matrix = mat4::new_identity::<f32>();
         mat4::mul(&mut view_projection_matrix, &projection_matrix, &view_matrix);
 
-        let mut color_attachment = GpuRenderPassColorAttachment::new(
-            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
+        let color_attachment = GpuRenderPassColorAttachment::new(
+            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture()?.create_view()?,
         );
-        color_attachment.clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
+        color_attachment.set_clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
         let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
-        let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
-        render_pass_descriptor.label("basic canvas render pass");
+        let render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
+        render_pass_descriptor.set_label("basic canvas render pass");
 
         let command_encoder = self.gpu_device.create_command_encoder();
         command_encoder.set_label("render quad encoder");
 
-        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
+        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor)?;
         render_pass_encoder.set_pipeline(&self.render_pipeline);
 
         self.object_infos.iter().enumerate().for_each(
@@ -445,7 +443,7 @@ impl Scene
                 // copy the values from JavaScript to the GPU
                 self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(
                     uniform_buffer, 0, uniform_values,
-                );
+                ).unwrap();
 
                 render_pass_encoder.set_bind_group(0, Some(&bind_group));
                 render_pass_encoder.draw(6);  // call our vertex shader 6 times
@@ -455,5 +453,7 @@ impl Scene
 
         let command_buffer = command_encoder.finish();
         self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
+
+        Ok(())
     }
 }

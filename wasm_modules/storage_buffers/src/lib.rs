@@ -13,7 +13,7 @@ use web_sys::gpu_buffer_usage::{COPY_DST, STORAGE};
 
 use js_sys::Float32Array;
 
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 
 
 #[wasm_bindgen]
@@ -26,10 +26,10 @@ extern "C"
 
 fn rand(min: Option<f32>, max: Option<f32>) -> f32
 {
-    let mut rng = thread_rng();
-    if min.is_none() { return rng.gen_range(0.0..1.0); };
-    if max.is_none() { return rng.gen_range(0.0..min.unwrap()); };
-    rng.gen_range(min.unwrap()..max.unwrap())
+    let mut rng = rng();
+    if min.is_none() { return rng.random_range(0.0..1.0); };
+    if max.is_none() { return rng.random_range(0.0..min.unwrap()); };
+    rng.random_range(min.unwrap()..max.unwrap())
 }
 
 
@@ -107,23 +107,23 @@ impl Scene
     pub fn create(
         gpu_device: GpuDevice, context: GpuCanvasContext, gpu_texture_format: GpuTextureFormat,
     ) 
-        -> Self
+        -> Result<Self, JsValue>
     {
-        let mut render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
-        render_shader_module_descriptor.label("triangle shaders with storage buffers");
+        let render_shader_module_descriptor = GpuShaderModuleDescriptor::new(&include_str!("../shader/render.wgsl"));
+        render_shader_module_descriptor.set_label("triangle shaders with storage buffers");
         let render_shader_module = gpu_device.create_shader_module(&render_shader_module_descriptor);
 
-        let vertex_state = GpuVertexState::new("vertex_main", &render_shader_module);
+        let vertex_state = GpuVertexState::new(&render_shader_module);
 
         let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
-        let fragment_state = GpuFragmentState::new("fragment_main", &render_shader_module, &fragment_state_targets);
+        let fragment_state = GpuFragmentState::new(&render_shader_module, &fragment_state_targets);
 
         let render_layout = JsValue::from("auto");
-        let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
-        render_pipeline_descriptor.label("triangle with storage buffers");
-        render_pipeline_descriptor.fragment(&fragment_state);
-        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor);
+        let render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(&render_layout, &vertex_state);
+        render_pipeline_descriptor.set_label("triangle with storage buffers");
+        render_pipeline_descriptor.set_fragment(&fragment_state);
+        let render_pipeline = gpu_device.create_render_pipeline(&render_pipeline_descriptor)?;
 
         let k_num_objects = 100;
         let mut object_infos = Vec::new();
@@ -139,19 +139,19 @@ impl Scene
         let static_storage_buffer_size = static_storage_unit_size * k_num_objects;
         let changing_storage_buffer_size = storage_unit_size * k_num_objects;
 
-        let mut static_storage_buffer_descriptor = GpuBufferDescriptor::new(
+        let static_storage_buffer_descriptor = GpuBufferDescriptor::new(
             static_storage_buffer_size.into(),
             STORAGE | COPY_DST,
         );
-        static_storage_buffer_descriptor.label("static storage for objects");
-        let static_storage_buffer = gpu_device.create_buffer(&static_storage_buffer_descriptor); 
+        static_storage_buffer_descriptor.set_label("static storage for objects");
+        let static_storage_buffer = gpu_device.create_buffer(&static_storage_buffer_descriptor)?; 
 
-        let mut changing_storage_buffer_descriptor = GpuBufferDescriptor::new(
+        let changing_storage_buffer_descriptor = GpuBufferDescriptor::new(
             changing_storage_buffer_size.into(),
             STORAGE | COPY_DST,
         );
-        changing_storage_buffer_descriptor.label("changing storage for objects");
-        let changing_storage_buffer = gpu_device.create_buffer(&changing_storage_buffer_descriptor);
+        changing_storage_buffer_descriptor.set_label("changing storage for objects");
+        let changing_storage_buffer = gpu_device.create_buffer(&changing_storage_buffer_descriptor)?;
 
         let k_color_offset = 0u32;
         let k_offset_offset = 4u32;
@@ -176,20 +176,20 @@ impl Scene
         }
         gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &static_storage_buffer, 0, &static_storage_values,
-        );
+        )?;
 
         // setup a storage buffer with vertex data
         let (vertex_data, num_vertices) = create_circle_vertices(Some(0.5), Some(0.25));
 
-        let mut vertex_storage_buffer_descriptor = GpuBufferDescriptor::new(
+        let vertex_storage_buffer_descriptor = GpuBufferDescriptor::new(
             vertex_data.byte_length().into(),
             STORAGE | COPY_DST,
         );
-        vertex_storage_buffer_descriptor.label("storage buffer vertices");
-        let vertex_storage_buffer = gpu_device.create_buffer(&vertex_storage_buffer_descriptor);
+        vertex_storage_buffer_descriptor.set_label("storage buffer vertices");
+        let vertex_storage_buffer = gpu_device.create_buffer(&vertex_storage_buffer_descriptor)?;
         gpu_device.queue().write_buffer_with_u32_and_buffer_source(
             &vertex_storage_buffer, 0, &vertex_data,
-        );
+        )?;
 
         let bind_group_0_entry_0 = GpuBindGroupEntry::new(0, &GpuBufferBinding::new(&static_storage_buffer));
         let bind_group_0_entry_1 = GpuBindGroupEntry::new(1, &GpuBufferBinding::new(&changing_storage_buffer));
@@ -198,34 +198,34 @@ impl Scene
         let bind_group_0_entries = [
             bind_group_0_entry_0, bind_group_0_entry_1, bind_group_0_entry_2,
         ].iter().collect::<js_sys::Array>();
-        let mut bind_group_0_descriptor = GpuBindGroupDescriptor::new(
+        let bind_group_0_descriptor = GpuBindGroupDescriptor::new(
             &bind_group_0_entries, &render_pipeline.get_bind_group_layout(0),
         );
-        bind_group_0_descriptor.label("bind group for objects");
+        bind_group_0_descriptor.set_label("bind group for objects");
         let bind_group_0 = gpu_device.create_bind_group(&bind_group_0_descriptor);
 
-        Scene 
+        Ok(Scene 
         {
             gpu_device, context, object_infos, num_vertices, bind_group_0, k_num_objects, storage_unit_size,
             changing_storage_buffer_size, changing_storage_buffer, render_pipeline,
-        }
+        })
     }
 
 
-    pub fn render(&self)
+    pub fn render(&self) -> Result<(), JsValue>
     {
-        let mut color_attachment = GpuRenderPassColorAttachment::new(
-            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture().create_view(),
+        let color_attachment = GpuRenderPassColorAttachment::new(
+            GpuLoadOp::Clear, GpuStoreOp::Store, &self.context.get_current_texture()?.create_view()?,
         );
-        color_attachment.clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
+        color_attachment.set_clear_value(&GpuColorDict::new(1.0, 0.3, 0.3, 0.3));
         let color_attachments = [color_attachment].iter().collect::<js_sys::Array>();
-        let mut render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
-        render_pass_descriptor.label("basic canvas render pass");
+        let render_pass_descriptor = GpuRenderPassDescriptor::new(&color_attachments);
+        render_pass_descriptor.set_label("basic canvas render pass");
 
         let command_encoder = self.gpu_device.create_command_encoder();
         command_encoder.set_label("command encoder");
 
-        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor);
+        let render_pass_encoder = command_encoder.begin_render_pass(&render_pass_descriptor)?;
         render_pass_encoder.set_pipeline(&self.render_pipeline);
 
         let canvas = self.context.canvas().dyn_into::<HtmlCanvasElement>().unwrap();
@@ -245,7 +245,7 @@ impl Scene
             scale_array.copy_from(&scale_vec);
             storage_values.set(&scale_array, offset + k_scale_offset);   // set the scale
         }
-        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(&self.changing_storage_buffer, 0, &storage_values);
+        self.gpu_device.queue().write_buffer_with_u32_and_buffer_source(&self.changing_storage_buffer, 0, &storage_values)?;
 
         render_pass_encoder.set_bind_group(0, Some(&self.bind_group_0));
         render_pass_encoder.draw_with_instance_count(self.num_vertices, self.k_num_objects);
@@ -254,5 +254,7 @@ impl Scene
 
         let command_buffer = command_encoder.finish();
         self.gpu_device.queue().submit(&[command_buffer].iter().collect::<js_sys::Array>());
+
+        Ok(())
     }
 }

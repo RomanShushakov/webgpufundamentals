@@ -14,9 +14,9 @@ opt-level = 3
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.90"
+wasm-bindgen = "0.2.105"
 
-web-sys = { version = "0.3.67", features = [
+web-sys = { version = "0.3.82", features = [
     "GpuDevice",
     "GpuCanvasContext",
     "GpuTextureFormat",
@@ -57,8 +57,6 @@ web-sys = { version = "0.3.67", features = [
     "GpuFilterMode",
     "CanvasRenderingContext2d",
     "ImageBitmap",
-    "GpuImageCopyExternalImage",
-    "GpuImageCopyTextureTagged",
     "GpuPrimitiveState",
     "GpuPrimitiveTopology",
     "GpuBindGroupLayoutDescriptor",
@@ -72,11 +70,8 @@ web-sys = { version = "0.3.67", features = [
     "GpuBlendComponent",
     "GpuBlendFactor",
     "GpuBlendOperation",    
+    "GpuCopyExternalImageDestInfo",
+    "GpuCopyExternalImageSourceInfo",
 ] }
 
-js-sys = "0.3.67"
-
-rand = "0.8.5"
-getrandom = { version = "0.2.12", features = ["js"] }
-
-mat4 = "0.2.1"
+js-sys = "0.3.82"
