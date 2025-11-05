@@ -3,23 +3,5 @@ package-lock.json
 public
 wasm
 
-wasm_modules/fundamentals/Cargo.lock
-wasm_modules/fundamentals/target
-
-wasm_modules/inter_stage_variables/Cargo.lock
-wasm_modules/inter_stage_variables/target
-
-wasm_modules/uniforms/Cargo.lock
-wasm_modules/uniforms/target
-
-wasm_modules/storage_buffers/Cargo.lock
-wasm_modules/storage_buffers/target
-
-wasm_modules/vertex_buffers/Cargo.lock
-wasm_modules/vertex_buffers/target
-
-wasm_modules/textures/Cargo.lock
-wasm_modules/textures/target
-
-wasm_modules/loading_images/Cargo.lock
-wasm_modules/loading_images/target
+wasm_modules/Cargo.lock
+wasm_modules/target

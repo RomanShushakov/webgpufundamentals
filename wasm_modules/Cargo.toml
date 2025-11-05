@@ -1,0 +1,66 @@
+[workspace]
+resolver = "2"
+members = [
+    "fundamentals",
+    "inter_stage_variables",
+    "loading_images",
+    "storage_buffers",
+    "textures",
+    "uniforms",
+    "vertex_buffers",
+]
+
+
+[profile.release]
+lto = true
+opt-level = 3
+
+
+[workspace.package]
+version = "0.1.0"
+authors = [
+    "roman shushakov <roman.a.shushakov1@gmail.com>",
+]
+edition = "2024"
+
+
+[workspace.dependencies.fundamentals]
+package = "fundamentals"
+path = "./fundamentals"
+
+
+[workspace.dependencies.inter_stage_variables]
+package = "inter_stage_variables"
+path = "./inter_stage_variables"
+
+
+[workspace.dependencies.loading_images]
+package = "loading_images"
+path = "./loading_images"
+
+
+[workspace.dependencies.storage_buffers]
+package = "storage_buffers"
+path = "./storage_buffers"
+
+
+[workspace.dependencies.textures]
+package = "textures"
+path = "./textures"
+
+
+[workspace.dependencies.uniforms]
+package = "uniforms"
+path = "./uniforms"
+
+
+[workspace.dependencies.vertex_buffers]
+package = "vertex_buffers"
+path = "./vertex_buffers"
+
+
+[workspace.dependencies]
+wasm-bindgen = "0.2.105"
+wasm-bindgen-futures = "0.4.55"
+web-sys = "0.3.82"
+js-sys = "0.3.82"

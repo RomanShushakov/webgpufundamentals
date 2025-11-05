@@ -1,22 +1,22 @@
 wasmModules=(
-    ./wasm_modules/fundamentals fundamentals
-    ../inter_stage_variables inter_stage_variables
-    ../uniforms uniforms
-    ../storage_buffers storage_buffers
-    ../vertex_buffers vertex_buffers
-    ../textures textures
-    ../loading_images loading_images
+    fundamentals
+    inter_stage_variables
+    uniforms
+    storage_buffers
+    vertex_buffers
+    textures
+    loading_images
 )
 
-len=(${#wasmModules[@]})
-step=2
+cd ./wasm_modules
+cargo build --workspace --release --no-default-features --target wasm32-unknown-unknown
 
-for((i=0; i<len; i+=step));
+len=(${#wasmModules[@]})
+
+for((i=0; i<len; i+=1));
 do 
-    cd ${wasmModules[i]} && \
-    cargo build --release --no-default-features --target wasm32-unknown-unknown && \
     wasm-bindgen \
-        --target web --out-name ${wasmModules[i+1]} \
-        --out-dir ../../wasm --no-typescript \
-        ./target/wasm32-unknown-unknown/release/${wasmModules[i+1]}.wasm
+        --target web --out-name ${wasmModules[i]} \
+        --out-dir ../wasm --no-typescript \
+        ./target/wasm32-unknown-unknown/release/${wasmModules[i]}.wasm
 done
