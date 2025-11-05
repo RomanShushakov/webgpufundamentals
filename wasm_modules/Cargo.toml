@@ -8,6 +8,7 @@ members = [
     "textures",
     "uniforms",
     "vertex_buffers",
+    "compute_shader_basics",
 ]
 
 
@@ -57,6 +58,11 @@ path = "./uniforms"
 [workspace.dependencies.vertex_buffers]
 package = "vertex_buffers"
 path = "./vertex_buffers"
+
+
+[workspace.dependencies.compute_shader_basics]
+package = "compute_shader_basics"
+path = "./compute_shader_basics"
 
 
 [workspace.dependencies]

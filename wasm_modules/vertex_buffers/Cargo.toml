@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 [dependencies]
 wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [
-     "GpuDevice",
+    "GpuDevice",
     "GpuCanvasContext",
     "GpuTextureFormat",
     "GpuShaderModuleDescriptor",

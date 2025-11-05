@@ -5,6 +5,7 @@ import { mainStorageBuffers } from "./chapters/storage_buffers.js";
 import { mainVertexBuffers } from "./chapters/vertex_buffers.js";
 import { mainTextures } from "./chapters/textures.js";
 import { mainLoadingImages, destroyLoadingImagesGUI } from "./chapters/loading_images.js";
+import { mainComputeShaderBasics } from "./chapters/compute_shader_basics.js";
 import styleText from "./index.scss?inline";
 
 
@@ -79,6 +80,10 @@ export class CustomApp extends HTMLElement {
                 break;
             case "loading_images":
                 await mainLoadingImages(this.state.canvas);
+                break;
+            case "compute_shader_basics":
+                destroyLoadingImagesGUI();
+                await mainComputeShaderBasics();
                 break;
             default:
                 destroyLoadingImagesGUI();

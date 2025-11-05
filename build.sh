@@ -6,6 +6,7 @@ wasmModules=(
     vertex_buffers
     textures
     loading_images
+    compute_shader_basics
 )
 
 cd ./wasm_modules

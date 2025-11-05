@@ -1,0 +1,50 @@
+[package]
+name = "compute_shader_basics"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+
+[lib]
+crate-type = ["cdylib"]
+
+
+[dependencies]
+futures = "0.3.31"
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
+    "GpuDevice",
+    "GpuShaderModuleDescriptor",
+    "GpuShaderModule",
+    "GpuTexture",
+    "GpuTextureView",
+    "GpuCommandEncoder",
+    "GpuRenderPassDescriptor",
+    "GpuRenderPassEncoder",
+    "GpuCommandBuffer",
+    "GpuQueue",
+    "GpuComputePipelineDescriptor",
+    "GpuComputePipeline",
+    "GpuProgrammableStage",
+    "GpuBufferDescriptor",
+    "GpuBuffer",
+    "GpuBindGroupDescriptor",
+    "GpuBindGroup",
+    "GpuBindGroupLayout",
+    "GpuBindGroupEntry",
+    "GpuBufferBinding",
+    "GpuComputePassDescriptor",
+    "GpuComputePassEncoder",
+    "gpu_buffer_usage",
+    "gpu_map_mode",
+    "GpuBufferBindingLayout",
+    "GpuBindGroupLayoutEntry",
+    "gpu_shader_stage",
+    "GpuBindGroupLayoutDescriptor",
+    "GpuPipelineLayoutDescriptor",
+    "GpuPipelineLayout",
+    "GpuBufferBindingType",
+] }
+
+js-sys.workspace = true
