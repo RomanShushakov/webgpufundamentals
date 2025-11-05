@@ -56,18 +56,22 @@ impl Scene
         );
 
         let vertex_state = GpuVertexState::new(&render_shader_module);
+        vertex_state.set_entry_point("vertex_main");
 
         let color_target_state = GpuColorTargetState::new(gpu_texture_format);
         let fragment_state_targets = [color_target_state].iter().collect::<js_sys::Array>();
         let fragment_state = GpuFragmentState::new(
             &render_shader_module, &fragment_state_targets,
         );
+        fragment_state.set_entry_point("fragment_main");
 
         let vertex_state_2 = GpuVertexState::new(&render_shader_module);
+        vertex_state_2.set_entry_point("vertex_main_2");
 
         let fragment_state_2 = GpuFragmentState::new(
             &render_shader_module, &fragment_state_targets,
         );
+        fragment_state_2.set_entry_point("fragment_main_2");
 
         // let render_layout = JsValue::from("auto");
         // let mut render_pipeline_descriptor = GpuRenderPipelineDescriptor::new(
